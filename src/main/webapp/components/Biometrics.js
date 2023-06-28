@@ -48,6 +48,9 @@ import fingerprintimage from "../images/fingerprintimage.png";
 import DeleteIcon from "@material-ui/icons/Delete";
 import UpgradeIcon from "@mui/icons-material/Upgrade";
 import _ from "lodash";
+import captureBiometric from "./CaptureBiometric";
+import {Download} from "@mui/icons-material";
+import FileSaver from "file-saver";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -135,7 +138,22 @@ function Biometrics(props) {
     templateType: "",
     device: "",
     reason: "",
-    age: ""
+    age: "",
+    captureBiometrics: []
+  });
+  const [deduplicationStatus, setDeduplicationStatus] = useState({
+    numberOfMatchedFingers: 0,
+    leftThumbMatched: false,
+    leftIndexMatched: false,
+    leftMiddleMatched: false,
+    leftRingMatched: false,
+    leftLittleMatched: false,
+    rightThumbMatched: false,
+    rightIndexMatched: false,
+    rightMiddleMatched: false,
+    rightRingMatched: false,
+    rightLittleMatched: false,
+    matchDetails: []
   });
   const [fingerType, setFingerType] = useState([]);
   const [devices, setDevices] = useState([]);
@@ -151,6 +169,8 @@ function Biometrics(props) {
   const [selectedFingers, setSelectedFingers] = useState([]);
   const [imageQuality, setImageQuality] = useState(false);
   const [isNewStatus, setIsNewStatus] = useState(true);
+  const [capturedBiometrics, setCapturedBiometrics] = useState([]);
+  const [ranDeduplication, setRanDeduplication] = React.useState(false);
 
   const calculate_age = dob => {
 
@@ -304,7 +324,8 @@ function Biometrics(props) {
   };
   // handle the input changes
   const handleInputChange = (e) => {
-    setObjValues({ ...objValues, [e.target.name]: e.target.value, age: calculate_age(props.age) });
+    setObjValues({ ...objValues, [e.target.name]: e.target.value,
+      age: calculate_age(props.age) });
   };
   //form validation
   const validate = () => {
@@ -321,10 +342,7 @@ function Biometrics(props) {
     e.preventDefault();
     if (validate()) {
       setLoading(true);
-      // console.log(biometricDevices)
-      // console.log(devices)
-      // axios.post(`${checkUrl}biometrics/secugen/enrollment?reader=SG_DEV_AUTO`,objValues,
-      console.log("", objValues)
+      // console.log("", objValues)
       axios
         .post(`${devices.url}?reader=${devices.name}&isNew=${isNewStatus}`, objValues, {
           headers: { Authorization: `Bearer ${token}` },
@@ -338,6 +356,7 @@ function Biometrics(props) {
               setTryAgain(false);
             }, 5000);
             toast.error(response.data.message.ERROR);
+            console.log("MESSAGE **** ", response.data.message.ERROR);
             setIsNewStatus(false)
           } 
           else if (response.data.type === "SUCCESS") {
@@ -346,7 +365,18 @@ function Biometrics(props) {
               {position: toast.POSITION.BOTTOM_CENTER, autoClose: 20000});
               setImageQuality(true)
             }
+            console.log(response.data);
             const templateType = response.data.templateType;
+            // let capT = response.data.capturedBiometricsList;
+            let newCapture = {id: "", templateType: response.data.templateType,
+              template: response.data.template};
+            let updatedCaptured = [...capturedBiometrics, newCapture];
+
+            setCapturedBiometrics(updatedCaptured);
+            console.log("New Capture ***** ", updatedCaptured);
+            console.log("Captured set ***** ", capturedBiometrics);
+
+
             setTryAgain(false);
             setSuccess(true);
             window.setTimeout(() => {
@@ -358,14 +388,21 @@ function Biometrics(props) {
               biometricsEnrollments.capturedBiometricsList,
               "templateType"
             );
-           
+
+            // console.log("Templates  ***** ", biometricsEnrollments);
+
             setCapturedFingered([...capturedFingered, biometricsEnrollments]);
+            console.log("All captured fingers ****", capturedFingered)
             //fingerType.splice(templateType, 1);
             _.find(fingerType, { display: templateType }).captured = true;
             setFingerType([...fingerType]);
             //setObjValues({biometricType: "FINGERPRINT", patientId:props.patientId, templateType:"", device:""});
-            setObjValues({ ...objValues, templateType: "" });
+            setObjValues(response.data);
+            setObjValues({ ...objValues, templateType: "", captureBiometrics: updatedCaptured});
+            console.log("State of new request object is *****", objValues);
+            // setObjValues({...objValues, captureBiometrics: capturedFingered})
             setIsNewStatus(false)
+            setRanDeduplication(false)
             //console.log("captured",  biometricsEnrollments)
           } else {
              setLoading(false);
@@ -379,6 +416,65 @@ function Biometrics(props) {
         });
     }
   };
+
+  const runDeduplication = (e) => {
+    e.preventDefault();
+    setLoading(true);
+    let url = devices.url.slice(0, -10);
+    url = url + `deduplicate/${props.patientId}`;
+
+    axios
+        .post(url, objValues.captureBiometrics, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then((response) => {
+          if (response.data.messageType === "SUCCESS"){
+            setLoading(false);
+            setDeduplicationStatus(response.data)
+            console.log(response.data)
+            setRanDeduplication(true);
+
+            if(response.data.numberOfMatchedFingers === 0){
+              toast.info("Deduplication process completed, no match found",
+                  {position: toast.POSITION.BOTTOM_CENTER, autoClose: 5000});
+            }else {
+              toast.info("Deduplication process completed, match found, please download deduplication report",
+                  {position: toast.POSITION.BOTTOM_CENTER, autoClose: 5000});
+            }
+          }
+
+    })
+  }
+
+  const downloadDeduplicationReport = (e) => {
+    e.preventDefault();
+    setLoading(true)
+    axios.get(`${baseUrl}reporting/deduplication-result?patientId=${props.patientId}`,
+        { headers: {"Authorization" : `Bearer ${token}`}, responseType: 'blob'},
+
+    )
+        .then(response => {
+          setLoading(false)
+          const fileName = `Deduplication-Result-Report`
+          const responseData = response.data
+          let blob = new Blob([responseData], {type: "application/octet-stream"});
+          FileSaver.saveAs(blob, `${fileName}.xlsx`);
+          toast.success(" Report generated successful");
+          //toast.success(" Save successful");
+          //props.setActiveContent('recent-history')
+
+        })
+        .catch(error => {
+          setLoading(false)
+          if(error.response && error.response.data){
+            let errorMessage = error.response.data.apierror && error.response.data.apierror.message!=="" ? error.response.data.apierror.message :  "Something went wrong, please try again";
+            toast.error(errorMessage);
+          }
+          else{
+            toast.error("Something went wrong. Please try again...");
+          }
+        });
+
+  }
 
   const deleteBiometric = (id, finger) => {
     axios
@@ -423,8 +519,25 @@ function Biometrics(props) {
           console.log("saved", response)
           toast.success("Biometric save successful", {position: toast.POSITION.BOTTOM_CENTER});
           setCapturedFingered([]);
+          setObjValues({});
           getPersonBiometrics();
           props.updatePatientBiometricStatus(true);
+          setRanDeduplication(false)
+          const newDeduplicationStatus = {
+            numberOfMatchedFingers: 0,
+            leftThumbMatched: false,
+            leftIndexMatched: false,
+            leftMiddleMatched: false,
+            leftRingMatched: false,
+            leftLittleMatched: false,
+            rightThumbMatched: false,
+            rightIndexMatched: false,
+            rightMiddleMatched: false,
+            rightRingMatched: false,
+            rightLittleMatched: false,
+            matchDetails: []
+          }
+          setDeduplicationStatus(newDeduplicationStatus)
         })
         .catch((error) => {
           toast.error("Something went wrong saving biometrics", {position: toast.POSITION.BOTTOM_CENTER});
@@ -638,19 +751,51 @@ function Biometrics(props) {
                     <br />
                     <br />
                     <br />
-                    <Col md={12}>
-                    <MatButton
-                        type="button"
-                        variant="contained"
-                        color="primary"
-                        disabled={capturedFingered.length < 6 ? true : false}
-                        onClick={saveBiometrics}
-                        // className={classes.button}
-                        startIcon={<SaveIcon />}
-                    >
-                        Save Capture
-                    </MatButton>
+                  <Row>
+                    <Col md={4}>
+                      <MatButton
+                          disabled={capturedFingered.length < 6}
+                          type="button"
+                          variant="contained"
+                          color="secondary"
+                          onClick={runDeduplication}
+                      >
+                        Run Deduplication
+                      </MatButton>
                     </Col>
+
+                    <Col md={4}>
+                      <MatButton
+                          type="button"
+                          variant="contained"
+                          color="primary"
+                          disabled={capturedFingered.length < 6 ||
+                              !ranDeduplication ||
+                              (ranDeduplication && deduplicationStatus.numberOfMatchedFingers > 0)}
+                          onClick={saveBiometrics}
+                          // className={classes.button}
+                          startIcon={<SaveIcon />}
+                      >
+                        Save Capture
+                      </MatButton>
+                    </Col>
+
+                    <Col md={4}>
+                      <MatButton
+                          type="button"
+                          variant="contained"
+                          color="primary"
+                          disabled={capturedFingered.length < 6 ||
+                              !ranDeduplication ||
+                              (ranDeduplication && deduplicationStatus.numberOfMatchedFingers === 0)}
+                          onClick={downloadDeduplicationReport}
+                          // className={classes.button}
+                      >
+                        Download Deduplication Report
+                      </MatButton>
+                    </Col>
+
+                  </Row>
                     <br />
                 </>
                 ) : (

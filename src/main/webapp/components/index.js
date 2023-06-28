@@ -3,6 +3,7 @@ import {ToastContainer} from "react-toastify";
 import {Card, CardBody, Modal, ModalBody, ModalFooter, ModalHeader} from "reactstrap";
 import {Link} from "react-router-dom";
 import Button from "@material-ui/core/Button";
+import MatButton from "@material-ui/core/Button";
 import {FaUserPlus} from "react-icons/fa";
 import FormGroup from "@mui/material/FormGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
@@ -20,7 +21,6 @@ import Typography from '@mui/material/Typography';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import CheckedInPatients from "./Home/CheckedInPatients";
 import MigrationDQA from "./MigrationDQA";
-
 
 const useStyles = makeStyles(theme => ({
     card: {
@@ -75,14 +75,29 @@ function Index(props) {
     const [modal, setModal] = useState(false);
     const [patient, setPatient] = useState(false);
     const [enablePPI, setEnablePPI] = useState(true);
+    const [showModal, setShowModal] = useState(false);
     const toggle = (id) => {
         const patient = patients.find(obj => obj.id == id);
         setPatient(patient);
         setModal(!modal);
     }
+
+    const handleSave = () => {
+        console.log("success");
+    };
+
     useEffect(() => {
         userPermission();
     }, []);
+
+    const handleModalClose = () => {
+        console.log('Opening modal working ...')
+        setShowModal(false);
+    }
+
+    const identify = () => {
+        console.log('Started identification ...')
+    }
     //Get list of Finger index
     const userPermission =()=>{
         axios
@@ -97,6 +112,12 @@ function Index(props) {
             });
 
     }
+
+    const biometricIdentification =() => {
+        console.log('Opening modal working ...')
+        setShowModal(!showModal);
+    }
+
     const enablePPIColumns = () =>{
         setEnablePPI(!enablePPI)
     }
@@ -142,21 +163,37 @@ function Index(props) {
                                 </Breadcrumbs>
 
                             </div>
-                            <div className="mb-6 col-md-6">
-                                {permissions.includes('view_patient') || permissions.includes("all_permission") ? (
-                                    <Link to={"register-patient"}>
-                                        <Button
+                            <div className="row mb-6 col-md-6">
+                                <div className="mb-6 col-md-6">
+                                    {permissions.includes('view_patient') || permissions.includes("all_permission") ? (
+                                        <MatButton
+                                            type="button"
                                             variant="contained"
-                                            color="primary"
+                                            color="secondary"
                                             className=" float-right mr-1"
-                                            startIcon={<FaUserPlus size="25"/>}
-                                            style={{backgroundColor:'#014d88'}}
+                                            onClick={biometricIdentification}
                                         >
-                                            <span style={{ textTransform: "capitalize", fontWeight:'bolder' }}>New Client</span>
-                                        </Button>
-                                    </Link>
-                                ):""
-                                }
+                                            <span style={{ textTransform: "capitalize", fontWeight:'bolder' }}>Biometric Identification</span>
+                                        </MatButton>
+                                    ):""
+                                    }
+                                </div>
+                                <div className="mb-6 col-md-6">
+                                    {permissions.includes('view_patient') || permissions.includes("all_permission") ? (
+                                        <Link to={"register-patient"}>
+                                            <Button
+                                                variant="contained"
+                                                color="primary"
+                                                className=" float-right mr-1"
+                                                startIcon={<FaUserPlus size="25"/>}
+                                                style={{backgroundColor:'#014d88'}}
+                                            >
+                                                <span style={{ textTransform: "capitalize", fontWeight:'bolder' }}>New Client</span>
+                                            </Button>
+                                        </Link>
+                                    ):""
+                                    }
+                                </div>
                             </div>
                         </div>
 
@@ -164,8 +201,37 @@ function Index(props) {
                     </CardBody>
                 </Card>
             }
+            <Modal show={showModal} >
 
+                <Modal.Header>
+                    <Modal.Title>Client Identification</Modal.Title>
+                    <Button
+                        variant=""
+                        className="btn-close"
+                        onClick={() => setModal(false)}
+                    >
+
+                    </Button>
+                </Modal.Header>
+                <Modal.Body>
+                    <p>Please click the identify button <br/>
+                        and then place your finger on the scanner</p>
+                    <br/>
+                    <MatButton
+                        type="button"
+                        variant="contained"
+                        color="primary"
+                        className="ms-2"
+                        onClick={() => identify()}
+                    >
+                        Identify
+                    </MatButton>
+
+                </Modal.Body>
+
+            </Modal>
         </div>
+
     );
 }
 

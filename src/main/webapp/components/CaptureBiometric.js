@@ -78,7 +78,15 @@ const CaptureBiometric = (props) => {
     console.log(biometricDevices)
     checkUrl= selectedDevice.url===null? baseUrl : selectedDevice.url
     
-    const [objValues, setObjValues]= useState({biometricType: "FINGERPRINT", patientId:props.patientId, templateType:"", device:""})
+    const [objValues, setObjValues]= useState({
+        biometricType: "FINGERPRINT",
+        patientId:props.patientId,
+        templateType:"",
+        device:"",
+        captureBiometrics: [],
+        reason: "",
+        age: "",
+    })
     const [fingerType, setFingerType] = useState([]);
     const [devices, setDevices] = useState(props.biometricDevices);
     const [loading, setLoading] = React.useState(false);
@@ -177,6 +185,7 @@ const CaptureBiometric = (props) => {
                     toast.error(response.data.message.ERROR);
                   }else{
                     const templateType= response.data.templateType
+                    console.log("Response Data ****** ", response)
                     setTryAgain(false);
                     setSuccess(true)
                     window.setTimeout(() => {
