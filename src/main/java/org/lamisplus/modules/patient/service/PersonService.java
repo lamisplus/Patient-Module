@@ -711,4 +711,9 @@ public class PersonService {
 
     }
 
+    public Optional<Person> findPersonByUuid(String uuid){
+        return personRepository.findByUuid(uuid);
+    }
+
+
 }

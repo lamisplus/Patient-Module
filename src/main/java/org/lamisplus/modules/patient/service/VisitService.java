@@ -266,5 +266,17 @@ public class VisitService {
         return visitDto;
     }
 
+    public Optional<Visit> findByVisitStartDateAndPerson(LocalDateTime visitStartDate, Person person){
+        return visitRepository.findByVisitStartDateAndPerson(visitStartDate, person);
+    }
+
+    public Visit saveVisit(Visit visit){
+        return visitRepository.save(visit);
+    }
+
+    public Optional<Visit> findByUuid(String uuid){
+        return visitRepository.findByUuid(uuid);
+    }
+
 
 }

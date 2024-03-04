@@ -8,6 +8,7 @@ import javax.persistence.*;
 import javax.validation.constraints.PastOrPresent;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "patient_visit")
@@ -31,8 +32,8 @@ public class Visit extends PatientAuditEntity implements Persistable<Long>, Seri
     @Column(name = "visit_end_date")
     private LocalDateTime visitEndDate;
     @Column(name = "uuid", nullable = false, unique = true, updatable = false)
-    private String uuid;
-    private Integer archived;
+    private String uuid = UUID.randomUUID().toString();
+    private Integer archived = 0;
 
     @Override
     public boolean isNew() {
