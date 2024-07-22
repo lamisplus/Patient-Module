@@ -534,6 +534,7 @@ function PatientDashboard(props) {
                                     &nbsp;
                                 </div>
                                 <div className="mb-3 col-md-3">
+
                                     <Link to={"/"} >
                                         <MatButton
                                             className=" float-right mr-1"

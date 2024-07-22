@@ -25,6 +25,10 @@ import org.lamisplus.modules.patient.repository.VisitRepository;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
+import java.sql.Date;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -715,6 +719,88 @@ public class PersonService {
 
     public Optional<Person> findPersonByUuid(String uuid){
         return personRepository.findByUuid(uuid);
+    }
+
+    public PersonMetaDataDto getAllPatientByLga(List<String> lgaIds, int pageNo, int pageSize) {
+        Pageable paging = PageRequest.of(pageNo, pageSize, Sort.by("id").descending());
+        Long currentOrganisationUnitId = getCurrentOrganisationUnitId();
+        Page<Person> persons;
+        if (lgaIds.size() < 1) {
+            log.info("LGA IDs not supplied");
+            return null;
+        } else {
+            persons = personRepository.findPersonByLga(0, currentOrganisationUnitId, lgaIds, paging);
+        }
+
+        PageDTO pageDTO = this.generatePagination(persons);
+        return getPersonMetdaDataDtoObject(pageDTO, persons);
+    }
+
+    public List<PersonExtraDto> getAllPatientByUser(String userId) {
+        List<Object[]> results = personRepository.findPersonByUser(userId);
+        List<PersonExtraDto> dtos = results.stream().map(this::mapToDTO).collect(Collectors.toList());
+        return dtos;
+    }
+
+
+    private PersonExtraDto mapToDTO(Object[] tuple) {
+        PersonExtraDto dto = new PersonExtraDto();
+        dto.setId((Number) tuple[0]);
+        dto.setPersonUuid((String) tuple[1]);
+        dto.setDeceased((Boolean) tuple[2]);
+        dto.setDeceasedDateTime((LocalDateTime) tuple[3]);
+        dto.setSex((String) tuple[4]);
+        dto.setDateOfBirth(convertToLocalDate(tuple[5]));
+        dto.setDateOfRegistration(convertToLocalDate(tuple[6]));
+        dto.setArchived((Integer) tuple[7]);
+        dto.setNinNumber((String) tuple[8]);
+        dto.setEmrId((String) tuple[9]);
+        dto.setFirstName((String) tuple[10]);
+        dto.setSurname((String) tuple[11]);
+        dto.setOtherName((String) tuple[12]);
+        dto.setHospitalNumber((String) tuple[13]);
+        dto.setLabTestName((String) tuple[14]);
+        dto.setGroupName((String) tuple[15]);
+        dto.setResultReported((String) tuple[16]);
+        dto.setLastVlDate((LocalDateTime) tuple[17]);
+        dto.setMaxDsdDate(convertToLocalDate(tuple[18]));
+        dto.setLastDrugPickupDate(convertToLocalDate(tuple[19]));
+        dto.setNextAppointment(convertToLocalDate(tuple[20]));
+
+        return dto;
+    }
+
+    private LocalDate convertToLocalDate(Object date) {
+        if (date instanceof Date) {
+            return ((Date) date).toLocalDate();
+        } else if (date instanceof java.sql.Timestamp) {
+            return ((java.sql.Timestamp) date).toLocalDateTime().toLocalDate();
+        } else if (date instanceof java.util.Date) {
+            return ((java.util.Date) date).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        }
+        return null;
+    }
+
+    PersonMetaDataDto getPersonMetdaDataDtoObject(PageDTO pageDTO, Page persons){
+        PersonMetaDataDto personMetaDataDto = new PersonMetaDataDto();
+        personMetaDataDto.setTotalRecords(pageDTO.getTotalRecords());
+        personMetaDataDto.setPageSize(pageDTO.getPageSize());
+        personMetaDataDto.setTotalPages(pageDTO.getTotalPages());
+        personMetaDataDto.setCurrentPage(pageDTO.getPageNumber());
+        personMetaDataDto.setRecords(persons.getContent());
+        return personMetaDataDto;
+    }
+
+    Long getCurrentOrganisationUnitId(){
+        Optional<User> currentUser = this.userService.getUserWithRoles();
+        Long currentOrganisationUnitId = 0L;
+        if (currentUser.isPresent()) {
+            User user = (User) currentUser.get();
+            currentOrganisationUnitId = user.getCurrentOrganisationUnitId();
+
+        }
+
+        return currentOrganisationUnitId;
     }
 
     public List<Map<String, Object>> countRegistrationsBySex() {
