@@ -1,5 +1,6 @@
 package org.lamisplus.modules.patient.repository;
 
+import org.lamisplus.modules.patient.domain.dto.PersonDtoProjection;
 import org.lamisplus.modules.patient.domain.entity.Person;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -235,7 +236,61 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
                     "    FROM jsonb_array_elements(p.address->'address') AS addr " +
                     "    WHERE addr->>'district' IN (?3) " +
                     ") addr_filter ON true", nativeQuery = true)
-    Page<Person> findPersonByLga(Integer archived, Long facilityId, List<String> lgaIds, Pageable pageable);
+    Page<PersonDtoProjection> findPersonByLga(Integer archived, Long facilityId, List<String> lgaIds, Pageable pageable);
+
+
+    @Query( value = "SELECT p.id AS id,p.created_by as createBy, p.date_of_registration as dateOfRegistration, p.first_name as firstName, p.surname AS surname, \n" +
+            "                        p.other_name AS otherName, \n" +
+            "                       p.hospital_number AS hospitalNumber, CAST (EXTRACT(YEAR from AGE(NOW(), date_of_birth)) AS INTEGER) AS age, \n" +
+            "                       INITCAP(p.sex) AS gender, p.date_of_birth AS dateOfBirth, p.is_date_of_birth_estimated AS isDobEstimated, \n" +
+            "                       p.facility_id as facilityId , p.uuid as personUuid, \n" +
+            "                       CAST(CASE when pc.display is null then FALSE ELSE TRUE END AS Boolean) AS isEnrolled, \n" +
+            "                       e.target_group_id AS targetGroupId, e.id as enrollmentId, e.unique_id as uniqueId, pc.display as enrollmentStatus, \n" +
+            "                       ca.commenced, bb.mobile_extra AS mobileExtra,  bb.biometricStatus\n" +
+            "                       FROM patient_person p \n" +
+            "                       INNER JOIN hiv_enrollment e ON p.uuid = e.person_uuid\n" +
+            "\t\t\t\t\t   JOIN (\n" +
+            "\t\t\t\t\t\tSELECT DISTINCT person_uuid, biometric_type as biometricStatus, CAST(jsonb_build_object('recapture', array_agg(DISTINCT recapture)) AS VARCHAR) AS mobile_extra \n" +
+            "\t\t\t\t\t\tFROM biometric bb \n" +
+            "\t\t\t\t\t\tWHERE archived = 0\n" +
+            "\t\t\t\t\t AND facility_id = ?1\n" +
+            "\t\t\t\t\t\tGROUP BY person_uuid, bb.biometric_type \n" +
+            "\t\t\t\t\t\tHAVING COUNT(person_uuid) >= 6 \n" +
+            "\t\t\t\t\t) bb ON p.uuid = bb.person_uuid \n" +
+            "\t\t\t\t\tJOIN LATERAL ( \n" +
+            "\t\t\t\t\t\tSELECT 1 \n" +
+            "\t\t\t\t\t\tFROM jsonb_array_elements(p.address->'address') AS addr \n" +
+            "\t\t\t\t\t\tWHERE addr->>'district' IN (?2) \n" +
+            "\t\t\t\t\t) addr_filter ON true\n" +
+            "                       LEFT JOIN \n" +
+            "                       (SELECT TRUE as commenced, hac.person_uuid FROM hiv_art_clinical hac WHERE hac.archived=0 AND hac.is_commencement is true \n" +
+            "                       GROUP BY hac.person_uuid)ca ON p.uuid = ca.person_uuid \n" +
+            "                       LEFT JOIN base_application_codeset pc on pc.id = e.status_at_registration_id \n" +
+            "                       WHERE p.archived=0\n" +
+            "                      AND p.facility_id= ?1 \n" +
+            "                       GROUP BY e.id, e.target_group_id,ca.commenced, p.id, p.first_name, bb.mobile_extra, bb.biometricStatus, \n" +
+            "                       p.first_name,  pc.display,p.surname, p.other_name, p.hospital_number, p.date_of_birth \n" +
+            "                       ORDER BY p.id DESC", nativeQuery = true)
+    List<PersonDtoProjection> getEnrolledPatientsByLgaWithRecaptureMobile(Long facilityId, List<String> lgaIds); //[]
+
+
+
+    @Query(value = "SELECT p.uuid, p.hospital_number AS hospitalNumber, mobile_extra AS mobileExtra\n" +
+            "FROM patient_person p \n" +
+            "JOIN (\n" +
+            "    SELECT DISTINCT person_uuid, CAST(jsonb_build_object('recapture', array_agg(DISTINCT recapture)) AS VARCHAR) AS mobile_extra \n" +
+            "    FROM biometric b \n" +
+            "    WHERE archived = ?1 \n" +
+            " AND facility_id = ?2 \n" +
+            "    GROUP BY person_uuid \n" +
+            "    HAVING COUNT(person_uuid) >= 6 \n" +
+            ") b ON p.uuid = b.person_uuid \n" +
+            "JOIN LATERAL ( \n" +
+            "    SELECT 1 \n" +
+            "    FROM jsonb_array_elements(p.address->'address') AS addr \n" +
+            "    WHERE addr->>'district' IN ('?3') \n" +
+            ") addr_filter ON true", nativeQuery = true)
+    Page<PersonDtoProjection> findPersonByLgaOnly(Integer archived, Long facilityId, List<String> lgaIds, Pageable paging);
 
     @Query(value = "select \n" +
             "  distinct pp.id as id, \n" +

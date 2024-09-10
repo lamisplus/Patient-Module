@@ -103,7 +103,10 @@ public class Person extends PatientAuditEntity implements Persistable<Long>  , S
     private String longitude;
     @Column(name = "source")
     private String source;
-//
+
+//    @Column(updatable = false, insertable = false)
+//    private String mobileExtra;
+
 //    @Column(name = "case_manager_id")
 //    private Long caseManagerId;
 

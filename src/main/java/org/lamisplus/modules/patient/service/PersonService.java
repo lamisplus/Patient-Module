@@ -31,13 +31,9 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.Map;
-import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -733,7 +729,7 @@ public class PersonService {
     public PersonMetaDataDto getAllPatientByLga(List<String> lgaIds, int pageNo, int pageSize) {
         Pageable paging = PageRequest.of(pageNo, pageSize, Sort.by("id").descending());
         Long currentOrganisationUnitId = getCurrentOrganisationUnitId();
-        Page<Person> persons;
+        Page<PersonDtoProjection> persons;
         if (lgaIds.size() < 1) {
             log.info("LGA IDs not supplied");
             return null;
@@ -745,12 +741,65 @@ public class PersonService {
         return getPersonMetdaDataDtoObject(pageDTO, persons);
     }
 
+    public List<PatientDtoRecapture> getPatientsByLgaBiometricRecapture(List<String> lgaIds) {
+        List<PatientDtoRecapture> recaptures  = new ArrayList<PatientDtoRecapture>();
+        Long currentOrganisationUnitId = getCurrentOrganisationUnitId();
+        try {
+            recaptures = personRepository.getEnrolledPatientsByLgaWithRecaptureMobile(currentOrganisationUnitId, lgaIds)
+                    .stream()
+                    .map(this::getPatientDTOBuild)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("An error occurred when fetching patients from the database: {}", e.getMessage());
+        }
+        return recaptures;
+    }
+
+
+
+//    public  List<PatientDtoRecapture> getPatientsByLgaBiometricRecapture (List<String> lgaIds) {
+//        List<PatientDtoRecapture> recaptures  = new ArrayList<PatientDtoRecapture>();
+//        Long currentOrganisationUnitId = getCurrentOrganisationUnitId();
+//        try {
+//            recaptures = personRepository.getEnrolledPatientsByLgaWithRecaptureMobile(currentOrganisationUnitId, lgaIds)
+//                    .stream()
+//                    .map(this::getPatientDTOBuild)
+//                    .collect(Collectors.toList());
+//        }catch(Exception e){
+//            log.error("An error occurred when fetching patient from database {}", e.getMessage());
+//        }
+//        return recaptures;
+//    }
+
     public List<PersonExtraDto> getAllPatientByUser(String userId) {
         List<Object[]> results = personRepository.findPersonByUser(userId);
         List<PersonExtraDto> dtos = results.stream().map(this::mapToDTO).collect(Collectors.toList());
         return dtos;
     }
 
+    private  PatientDtoRecapture getPatientDTOBuild(PersonDtoProjection p) {
+        PatientDtoRecapture patientDTO = PatientDtoRecapture.builder()
+                .age(p.getAge())
+                .dateOfBirth(p.getDateOfBirth())
+                .sex(p.getGender())
+                .hospitalNumber(p.getHospitalNumber())
+                .firstName(p.getFirstName())
+                .facilityId(p.getFacility())
+                .personUuid(p.getPersonUuid())
+                .otherName(p.getOtherName())
+                .surname(p.getSurname())
+                .id(p.getId())
+                .isDobEstimated(p.getIsDobEstimated())
+                .isEnrolled(p.getIsEnrolled())
+                .uniqueId(p.getUniqueId())
+                .dateOfRegistration(p.getDateOfRegistration())
+                .mobileExtra(p.getMobileExtra())
+//                .biometricStatus(p.getBiometricStatus())
+                .build();
+        patientDTO.setBiometricStatus(p.getBiometricStatus() != null);
+
+        return patientDTO;
+    }
 
     private PersonExtraDto mapToDTO(Object[] tuple) {
         PersonExtraDto dto = new PersonExtraDto();

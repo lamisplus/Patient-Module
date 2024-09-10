@@ -2,12 +2,14 @@ package org.lamisplus.modules.patient.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.lamisplus.modules.base.domain.dto.PageDTO;
 import org.lamisplus.modules.patient.domain.dto.*;
 import org.lamisplus.modules.patient.domain.entity.PatientCheckPostService;
 import org.lamisplus.modules.patient.domain.entity.Person;
 import org.lamisplus.modules.patient.repository.PatientCheckPostServiceRepository;
 import org.lamisplus.modules.patient.service.PersonService;
 import org.lamisplus.modules.patient.service.ValidationService;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -203,6 +205,12 @@ public class PatientController {
         return new ResponseEntity<>(personMetaDataDto, new HttpHeaders(), HttpStatus.OK);
     }
 
+    @PostMapping(value = "/getall-clients-by-lga")
+    public ResponseEntity<List<PatientDtoRecapture>> getPatientsByLgaRecaptures (@RequestBody List<String> lgaIds) {
+        List<PatientDtoRecapture> patientDtoRecapture = personService.getPatientsByLgaBiometricRecapture(lgaIds);
+        return new ResponseEntity<>(patientDtoRecapture, new HttpHeaders(), HttpStatus.OK);
+    }
+
     @PostMapping(value = "/getall-patients-by-lga")
     public ResponseEntity<PersonMetaDataDto> getAllPatientsByLga(
             @RequestBody List<String> lgaIds,
@@ -220,6 +228,8 @@ public class PatientController {
         result = personService.getAllPatientByUser(userId);
         return new ResponseEntity<>(result, new HttpHeaders(), HttpStatus.OK);
     }
+
+
 
     @GetMapping(value = "/count-by-sex")
     public ResponseEntity<List<Map<String, Object>>> getCountRegistrationsBySex() {
