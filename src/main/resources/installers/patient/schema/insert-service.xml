@@ -39,4 +39,14 @@
     <!--                 stripComments="true"/>-->
     <!--    </changeSet>-->
 
+    <changeSet failOnError="true" author="Joshua Gabriel" id="2025-01-13-001">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="patient_visit" columnName="service_code" />
+            </not>
+        </preConditions>
+        <sql>
+            ALTER TABLE patient_visit ADD service_code VARCHAR(255);
+        </sql>
+    </changeSet>
 </databaseChangeLog>

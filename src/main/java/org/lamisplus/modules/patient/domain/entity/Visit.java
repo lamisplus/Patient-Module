@@ -34,6 +34,8 @@ public class Visit extends PatientAuditEntity implements Persistable<Long>, Seri
     @Column(name = "uuid", nullable = false, unique = true, updatable = false)
     private String uuid = UUID.randomUUID().toString();
     private Integer archived = 0;
+    @Column(name = "service_code")
+    private String serviceCode;
 
     @Override
     public boolean isNew() {

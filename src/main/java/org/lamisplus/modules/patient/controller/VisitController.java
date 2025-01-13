@@ -25,7 +25,7 @@ public class VisitController {
 
     @PostMapping
     public ResponseEntity<Visit> createVisit(@RequestBody VisitRequest visitDto) {
-        return ResponseEntity.ok (visitService.createVisit (visitDto));
+        return ResponseEntity.ok (visitService.createVisit (visitDto, null));
     }
 
     @GetMapping
@@ -50,7 +50,7 @@ public class VisitController {
     }
 
     @PostMapping("/checkin")
-    public ResponseEntity<VisitDto> checkInVisitByPersonId(@RequestBody CheckInDto checkInDto) {
+    public ResponseEntity <VisitDto> checkInVisitByPersonId(@RequestBody CheckInDto checkInDto) {
         return ResponseEntity.ok (visitService.checkInPerson (checkInDto));
     }
 
