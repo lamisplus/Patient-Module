@@ -5,7 +5,6 @@
 - IDE of choice (IntelliJ, Eclipse, etc.)
 - Java 8+
 - PostgreSQL 14+
-- `.m2` folder from Google Drive https://drive.google.com/file/d/17F6wHPADVVaDBabajrM9wABUeB04i6D1/view?usp=sharing
 
 ## Run in Development Environment
 
@@ -78,4 +77,6 @@
 - Kennedy Kirui https://github.com/kenkirui
 
 ### Special mentions
+- Aniwange Tertese Amos https://github.com/aniwange33
 - Dr Karim Usman https://github.com/drkusman
+- Dikum https://github.com/dikumheartland
