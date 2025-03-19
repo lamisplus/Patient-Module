@@ -23,9 +23,9 @@
 2. Update other Maven application properties as required.
 
 ### Run Build and Install Commands
-1. Change the directory to `starter-module`:
+1. Change the directory to `src`:
     ```bash
-    cd starter-module
+    cd src
     ```
 2. Run Frontend Build Command:
     ```bash
