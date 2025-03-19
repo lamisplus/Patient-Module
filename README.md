@@ -1,38 +1,81 @@
 # Patient Module
-* Patient module is one of the core module on lamisplus is basically the entry point to the application
+## System Requirements
 
-## Build
+### Prerequisites to Install
+- IDE of choice (IntelliJ, Eclipse, etc.)
+- Java 8+
+- PostgreSQL 14+
+- `.m2` folder from Google Drive https://drive.google.com/file/d/17F6wHPADVVaDBabajrM9wABUeB04i6D1/view?usp=sharing
 
-### Prerequisites
+## Run in Development Environment
 
-#### Java
- 
-####  Lamisplus is a Java application that is why you need to install Java JDK, the required version is 1.8.
+### How to Install Dependencies
+1. Install Java 8+
+2. Install PostgreSQL 14+
+3. Download and replace the system `.m2` folder.
+4. Clone the git repository:
+    ```bash
+    git clone https://github.com/lamisplus/Core.git
+    ```
+5. Open the project in your IDE of choice.
 
-#### Maven
-#### Install the build tool [Maven](https://maven.apache.org/install.html)
-#### You need to ensure that Maven uses the Java JDK needed for the branch you want to build.
+### Update Configuration File
+1. Update database access details in `db-config.yml` file.
+2. Update other Maven application properties as required.
 
-To do so execute
+### Run Build and Install Commands
+1. Change the directory to `starter-module`:
+    ```bash
+    cd starter-module
+    ```
+2. Run Frontend Build Command:
+    ```bash
+    npm run build
+    ```
+3. Run Maven clean install:
+    ```bash
+    mvn clean install
+    ```
 
-```bash
- mvn -version
-```
+## How to Package for Production Environment
+1. Run Maven package command:
+    ```bash
+    mvn clean package
+    ```
 
-##### which will tell you what version Maven is using. Refer to the Maven docs if you need to configure Maven.
+## Launch Packaged JAR File
+1. Launch the JAR file:
+    ```bash
+    java -jar <path-to-jar-file>
+    ```
+2. Optionally, run with memory allocation:
+    ```bash
+    java -jar -Xms4096M -Xmx6144M <path-to-jar-file>
+    ```
 
-#### Git
-##### Install the version control tool git and clone this repository with
+## Visit the Application
+- Visit the application on a browser at the configured port:
+    ```
+    http://localhost:8080
+    ```
 
-```bash
-https://github.com/lamisplus/patient-module.git
-```
-### Build Command
-```bash
-cd patient-module
-mvn clean package
-```
+## Access Swagger Documentation
+- Visit the application at:
+    ```
+    http://localhost:8080/swagger-ui.html#/
+    ```
 
-## Deploy
-#### Copy the jar file generated in the target folder and install it on the LAMISPLUS base.
-###  Congratulation
+## Access Application Logs
+- Application logs can be accessed in the `application-debug` folder.
+
+## Authors & Acknowledgments
+### Main contributors
+- Victor Ajor   https://github.com/AJ-DataFI
+- Mathew Adegbite https://github.com/mathewade 
+- Emeka https://github.com/drjavanew
+- John gichangi https://github.com/gichangi
+- Joshua https://github.com/JOSH2019GABRIEL
+- Kennedy Kirui https://github.com/kenkirui
+
+### Special mentions
+- Dr Karim Usman https://github.com/drkusman
