@@ -400,72 +400,76 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     List<Object[]> countRegistrationsByYearAndSex();
     
 
-    @Query(value = "SELECT DISTINCT\n" +
-            "    p.id AS id,\n" +
-            "    p.created_by AS createby,\n" +
-            "    p.date_of_registration AS dateofregistration,\n" +
-            "    p.first_name AS firstname,\n" +
-            "    p.surname AS surname,\n" +
-            "    p.other_name AS othername,\n" +
-            " CONCAT(\n" +
-            "        p.first_name, \n" +
-            "        CASE WHEN p.other_name IS NULL OR p.other_name = '' THEN '' ELSE ' ' || p.other_name END,\n" +
-            "        ' ', \n" +
-            "        p.surname\n" +
-            "    ) AS fullname,\n" +
-            "    p.hospital_number AS hospitalnumber,\n" +
-            "    CAST(EXTRACT(YEAR FROM AGE(NOW(), p.date_of_birth)) AS INTEGER) AS age,\n" +
-            "    INITCAP(p.sex) AS sex,\n" +
-            "    p.date_of_birth AS dateofbirth,\n" +
-            "    p.is_date_of_birth_estimated AS isdobestimated,\n" +
-            "    p.facility_id AS facilityid,\n" +
-            "    p.uuid AS personuuid,\n" +
-            "    CAST(CASE WHEN pc.display IS NULL THEN FALSE ELSE TRUE END AS BOOLEAN) AS isenrolled,\n" +
-            "    e.target_group_id AS targetgroupid,\n" +
-            "    e.id AS enrollmentid,\n" +
-            "    e.unique_id AS uniqueid,\n" +
-            "    pc.display AS currentstatus,\n" +
-            "    ca.commenced AS commenced,\n" +
-            "    CAST(CASE WHEN b.biometric_type IS NULL THEN FALSE ELSE TRUE END AS BOOLEAN) AS biometricstatus,\n" +
-            "    v.id AS visitid,\n" +
-            "    CAST(CASE WHEN ce.type IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS clinicalevaluation,\n" +
-            "    CAST(CASE WHEN mh.type IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS mentalhealth,\n" +
-            "    CAST(CASE WHEN pa.person_uuid IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS isOnAnc,\n" +
-            "    CAST(CASE WHEN pmt.person_uuid IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS isOnPmtct,\n" +
-            "    CAST(CASE WHEN prep.person_uuid IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS isOnPrep,\n" +
-            "    pmt.hiv_status AS hivStatus,\n" +
-            "    pa.static_hiv_status AS staticHivStatus\n" +
-            "FROM patient_person p\n" +
-            "INNER JOIN patient_encounter pe ON pe.person_uuid = p.uuid\n" +
-            "INNER JOIN patient_visit v ON v.uuid = pe.visit_id\n" +
-            "LEFT JOIN biometric b ON b.person_uuid = p.uuid\n" +
-            "LEFT JOIN hiv_enrollment e ON p.uuid = e.person_uuid\n" +
-            "LEFT JOIN pmtct_anc pa ON p.uuid = pa.person_uuid AND pa.archived = 0\n" +
-            "LEFT JOIN pmtct_enrollment pmt ON p.uuid = pmt.person_uuid AND pmt.archived = 0\n" +
-            "LEFT JOIN prep_enrollment prep ON p.uuid = prep.person_uuid AND prep.archived = 0\n" +
-            "LEFT JOIN (\n" +
-            "    SELECT TRUE AS commenced, hac.person_uuid\n" +
-            "    FROM hiv_art_clinical hac\n" +
-            "    WHERE hac.archived = 0 AND hac.is_commencement IS TRUE\n" +
-            "    GROUP BY hac.person_uuid\n" +
-            ") ca ON p.uuid = ca.person_uuid\n" +
-            "LEFT JOIN base_application_codeset pc ON pc.id = e.status_at_registration_id\n" +
-            "LEFT JOIN (\n" +
-            "    SELECT DISTINCT person_uuid, type \n" +
-            "    FROM hiv_observation \n" +
-            "    WHERE type = 'Clinical evaluation' \n" +
-            "    AND archived = 0\n" +
-            ") ce ON ce.person_uuid = p.uuid\n" +
-            "LEFT JOIN (\n" +
-            "    SELECT DISTINCT person_uuid, type \n" +
-            "    FROM hiv_observation \n" +
-            "    WHERE type = 'Mental health' \n" +
-            "    AND archived = 0\n" +
-            ") mh ON mh.person_uuid = p.uuid\n" +
-            "WHERE p.archived = 0\n" +
-            "AND pe.service_code = ?1\n" +
-            "AND pe.status = 'PENDING'\n" +
-            "ORDER BY p.id ASC", nativeQuery = true)
+    @Query(value = "SELECT DISTINCT \n" +
+            "                p.id AS id, \n" +
+            "                p.created_by AS createby, \n" +
+            "                p.date_of_registration AS dateofregistration, \n" +
+            "                p.first_name AS firstname, \n" +
+            "                p.surname AS surname, \n" +
+            "                p.other_name AS othername, \n" +
+            "                CONCAT( \n" +
+            "                    p.first_name,  \n" +
+            "                    CASE WHEN p.other_name IS NULL OR p.other_name = '' THEN '' ELSE ' ' || p.other_name END, \n" +
+            "                    ' ',  \n" +
+            "                    p.surname \n" +
+            "                ) AS fullname, \n" +
+            "                p.hospital_number AS hospitalnumber, \n" +
+            "                CAST(EXTRACT(YEAR FROM AGE(NOW(), p.date_of_birth)) AS INTEGER) AS age, \n" +
+            "                INITCAP(p.sex) AS sex, \n" +
+            "                p.date_of_birth AS dateofbirth, \n" +
+            "                p.is_date_of_birth_estimated AS isdobestimated, \n" +
+            "                p.facility_id AS facilityid, \n" +
+            "                p.uuid AS personuuid, \n" +
+            "                CAST(CASE WHEN pc.display IS NULL THEN FALSE ELSE TRUE END AS BOOLEAN) AS isenrolled, \n" +
+            "                e.target_group_id AS targetgroupid, \n" +
+            "                e.id AS enrollmentid, \n" +
+            "                e.unique_id AS uniqueid, \n" +
+            "                pc.display AS currentstatus, \n" +
+            "                ca.commenced AS commenced, \n" +
+            "                CAST(CASE WHEN b.biometric_type IS NULL THEN FALSE ELSE TRUE END AS BOOLEAN) AS biometricstatus, \n" +
+            "                v.id AS visitid, \n" +
+            "                CAST(CASE WHEN ce.type IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS clinicalevaluation, \n" +
+            "                CAST(CASE WHEN mh.type IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS mentalhealth, \n" +
+            "                CAST(CASE WHEN pa.person_uuid IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS isOnAnc, \n" +
+            "                CAST(CASE WHEN pmt.person_uuid IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS isOnPmtct, \n" +
+            "                CAST(CASE WHEN prep.person_uuid IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS isOnPrep, \n" +
+            "                CAST(CASE WHEN hts.person_uuid IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS isOnHts,\n" +
+            "                CAST(CASE WHEN hts_rst.person_uuid IS NOT NULL THEN TRUE ELSE FALSE END AS BOOLEAN) AS isOnHtsRiskStratification,\n" +
+            "                pmt.hiv_status AS hivStatus, \n" +
+            "                pa.static_hiv_status AS staticHivStatus \n" +
+            "            FROM patient_person p \n" +
+            "            INNER JOIN patient_encounter pe ON pe.person_uuid = p.uuid \n" +
+            "            INNER JOIN patient_visit v ON v.uuid = pe.visit_id \n" +
+            "            LEFT JOIN biometric b ON b.person_uuid = p.uuid \n" +
+            "            LEFT JOIN hiv_enrollment e ON p.uuid = e.person_uuid \n" +
+            "            LEFT JOIN pmtct_anc pa ON p.uuid = pa.person_uuid AND pa.archived = 0 \n" +
+            "            LEFT JOIN pmtct_enrollment pmt ON p.uuid = pmt.person_uuid AND pmt.archived = 0 \n" +
+            "            LEFT JOIN prep_enrollment prep ON p.uuid = prep.person_uuid AND prep.archived = 0 \n" +
+            "            LEFT JOIN hts_client hts ON p.uuid = hts.person_uuid and hts.archived = 0\n" +
+            "            LEFT JOIN hts_risk_stratification hts_rst ON p.uuid =hts_rst.person_uuid AND hts_rst.archived = 0\n" +
+            "            LEFT JOIN ( \n" +
+            "                SELECT TRUE AS commenced, hac.person_uuid \n" +
+            "                FROM hiv_art_clinical hac \n" +
+            "                WHERE hac.archived = 0 AND hac.is_commencement IS TRUE \n" +
+            "                GROUP BY hac.person_uuid \n" +
+            "            ) ca ON p.uuid = ca.person_uuid \n" +
+            "            LEFT JOIN base_application_codeset pc ON pc.id = e.status_at_registration_id \n" +
+            "            LEFT JOIN ( \n" +
+            "                SELECT DISTINCT person_uuid, type  \n" +
+            "                FROM hiv_observation  \n" +
+            "                WHERE type = 'Clinical evaluation'  \n" +
+            "                AND archived = 0 \n" +
+            "            ) ce ON ce.person_uuid = p.uuid \n" +
+            "            LEFT JOIN ( \n" +
+            "                SELECT DISTINCT person_uuid, type  \n" +
+            "                FROM hiv_observation  \n" +
+            "                WHERE type = 'Mental health'  \n" +
+            "                AND archived = 0 \n" +
+            "            ) mh ON mh.person_uuid = p.uuid \n" +
+            "            WHERE p.archived = 0 \n" +
+            "            AND pe.service_code = ?1 \n" +
+            "            AND pe.status = 'PENDING' \n" +
+            "            ORDER BY p.id ASC", nativeQuery = true)
     List<PersonProjection> findAllCheckedInPersonsDetails(String serviceCode);
 }
 

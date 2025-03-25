@@ -30,6 +30,8 @@ public interface PersonProjection {
     Boolean getIsOnAnc();
     Boolean getIsOnPmtct();
     Boolean getIsOnPrep();
+    Boolean getIsOnHts();
+    Boolean getIsOnHtsRiskStratification();
     String getHivStatus();
     String getStaticHivStatus();
 }

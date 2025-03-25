@@ -4,10 +4,10 @@ import com.foreach.across.core.annotations.Installer;
 import com.foreach.across.core.installers.AcrossLiquibaseInstaller;
 import org.springframework.core.annotation.Order;
 
-@Order(2)
+@Order(5)
 @Installer(name = "patient-module-service-installer",
         description = "insert the required patient service",
-        version = 2)
+        version = 3)
 public class PatientModuleServiceInstaller extends AcrossLiquibaseInstaller {
     public PatientModuleServiceInstaller() {
         super ("classpath:installers/patient/schema/insert-service.xml");

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useHistory } from "react-router-dom";
 import MatButton from "@material-ui/core/Button";
 import { TiArrowBack } from "react-icons/ti";
@@ -21,8 +21,6 @@ import { makeStyles } from "@material-ui/core/styles";
 import moment from "moment";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import RecallPatient from "../../RecallPatient";
-import ProgressComponent from "../../ProgressComponent";
-
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -129,11 +127,12 @@ function Index(props) {
     history.location && history.location.state
       ? history.location.state.patientObj
       : {};
-  ///console.log("check in", patientObj)
-  const permissions =
-    history.location && history.location.state
-      ? history.location.state.permissions
-      : [];
+ 
+ const permissionsSet = useMemo(() => {
+   const permArray = history.location?.state?.permissions || [];
+   return new Set(permArray);
+ }, [history.location?.state?.permissions]);
+  
   const { handleSubmit, control } = useForm();
   const [modal, setModal] = useState(false);
   const [allServices, setAllServices] = useState(null);
@@ -216,12 +215,12 @@ function Index(props) {
   }
 
   const onChangeDate = (date) => {
-   
+    console.log(date.target.value);
     const newDate = moment(new Date(date.target.value)).format(
       "yyyy-MM-dd hh:mm"
     );
     setCheckInDate(newDate);
-    
+    console.log(newDate);
   };
   const handleCheckIn = () => {
     setModal(true);
@@ -317,15 +316,14 @@ function Index(props) {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((response) => {
-         
+          console.log("checkIn", response);
           toast.success("Patient Check-In successful");
-          <ProgressComponent />
           setCheckinStatus(true);
           onCancelCheckIn();
           loadPatientVisits();
         })
         .catch((error) => {
-          console.error(error);
+          console.log(error);
           toast.error("Something went wrong");
           onCancelCheckIn();
         });
@@ -348,13 +346,12 @@ function Index(props) {
       })
       .then((response) => {
         toast.success("Record save successful");
-        <ProgressComponent />
         setCheckinStatus(false);
         onCancelCheckOut();
         loadPatientVisits();
       })
       .catch((error) => {
-        console.error(error);
+        console.log(error);
         toast.error("Something went wrong");
         onCancelCheckOut();
       });
@@ -368,7 +365,6 @@ function Index(props) {
   }, [loadServices, loadPatientVisits]);
   return (
     <>
-              <ProgressComponent />
       <div className="row">
         <div className="mb-3 col-md-3">&nbsp;</div>
         <div className="mb-3 col-md-3">&nbsp;</div>
@@ -390,31 +386,27 @@ function Index(props) {
             </MatButton>
           </Link>
 
-          {permissions.includes("patient_check_in") ||
-          permissions.includes("all_permission") ? (
-            <>
-              {checkinStatus === false ? (
-                <Button
-                  variant="contained"
-                  style={{
-                    backgroundColor: "rgb(4, 196, 217)",
-                    fontSize: "14PX",
-                    fontWeight: "bold",
-                    height: "35px",
-                  }}
-                  onClick={handleCheckIn}
-                  className=" float-right mr-1"
-                >
-                  <span style={{ textTransform: "capitalize" }}>CheckIn</span>
-                </Button>
-              ) : (
-                ""
-              )}
-            </>
-          ) : (
-            ""
-          )}
-          {checkinStatus === true ? (
+          {permissionsSet.has("patient_check_in") ||
+          permissionsSet.has("all_permission") ? (
+            <Button
+              variant="contained"
+              style={{
+                backgroundColor: checkinStatus ? "#ccc" : "rgb(4, 196, 217)",
+                fontSize: "14PX",
+                fontWeight: "bold",
+                height: "35px",
+              }}
+              onClick={handleCheckIn}
+              className="float-right mr-1"
+              disabled={checkinStatus}
+            >
+              <span style={{ textTransform: "capitalize" }}>
+                {checkinStatus ? "Already Checked In" : "Check In"}
+              </span>
+            </Button>
+          ) : null}
+
+          {/* {checkinStatus === true ? (
             <Button
               variant="contained"
               style={{
@@ -430,19 +422,23 @@ function Index(props) {
             </Button>
           ) : (
             ""
-          )}
+          )} */}
 
-          <Link >
-              <MatButton
-                  className=" float-right mr-1"
-                  variant="contained"
-                  floated="left"
-                  startIcon={<FontAwesomeIcon icon="fa-solid fa-fingerprint" />}
-                  style={{backgroundColor:"rgb(153, 46, 98)", color:'#fff', height:'35px'}}
-                  onClick={toggleRecall}
-              >
-                  <span style={{ textTransform: "capitalize" }}>Identify</span>
-              </MatButton>
+          <Link>
+            <MatButton
+              className=" float-right mr-1"
+              variant="contained"
+              floated="left"
+              startIcon={<FontAwesomeIcon icon="fa-solid fa-fingerprint" />}
+              style={{
+                backgroundColor: "rgb(153, 46, 98)",
+                color: "#fff",
+                height: "35px",
+              }}
+              onClick={toggleRecall}
+            >
+              <span style={{ textTransform: "capitalize" }}>Identify</span>
+            </MatButton>
           </Link>
         </div>
       </div>
@@ -509,39 +505,7 @@ function Index(props) {
                     </LocalizationProvider>
                   </FormGroup>
                 </Grid>
-                {/*                                <Grid item xs={8}>
 
-                                    <FormControl >
-                                        <Label for="dateOfRegistration">Select service </Label>
-                                        <Autocomplete
-                                            multiple
-                                            id="checkboxes-tags-demo"
-                                            options={services}
-                                            //disableCloseOnSelect
-                                            getOptionLabel={(option) => option.moduleServiceName}
-                                            onChange={(e, i) => {
-                                                console.log(i)
-                                                setSelectedServices({ ...selectedServices, checkInServices: i });
-                                            }}
-                                            renderOption={(props, option, { selected }) => (
-                                                <li {...props}>
-                                                    <Checkbox
-                                                        icon={icon}
-                                                        checkedIcon={checkedIcon}
-                                                        style={{ marginRight: 8 }}
-                                                        checked={selected}
-                                                    />
-                                                    {option.moduleServiceName}
-                                                </li>
-                                            )}
-                                            style={{ width: 400 }}
-                                            renderInput={(params) => (
-                                                <TextField {...params} label="Services" />
-                                            )}
-                                        />
-
-                                    </FormControl>
-                                </Grid>*/}
                 <Grid item xs={12}>
                   <FormGroup>
                     <Label
@@ -695,7 +659,6 @@ function Index(props) {
         personUuid={patientObj.uuid}
       />
     </>
-    
   );
 }
 
