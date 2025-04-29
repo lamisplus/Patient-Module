@@ -57,7 +57,7 @@ public class PersonService {
 
     private final VisitRepository visitRepository;
 
-
+    private final VisitService visitService;
 
     private final EncounterRepository encounterRepository;
     private final UserService userService;
@@ -140,8 +140,11 @@ public class PersonService {
 
 
     public List<PersonProjection> getCheckedInPersonsByServiceCodeAndVisitId(String serviceCode) {
+        visitService.getPendingEncounterByStatus();
         return personRepository.findAllCheckedInPersonsDetails(serviceCode);
     }
+
+
 
 
     public PersonResponseDto getPersonById(Long id) {
