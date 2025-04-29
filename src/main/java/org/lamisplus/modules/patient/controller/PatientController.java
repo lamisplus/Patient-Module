@@ -8,6 +8,7 @@ import org.lamisplus.modules.patient.domain.entity.Person;
 import org.lamisplus.modules.patient.repository.PatientCheckPostServiceRepository;
 import org.lamisplus.modules.patient.service.PersonService;
 import org.lamisplus.modules.patient.service.ValidationService;
+import org.lamisplus.modules.patient.service.VisitService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
