@@ -56,6 +56,7 @@ public class PersonService {
     private final OrganisationUnitRepository organisationUnitRepository;
 
     private final VisitRepository visitRepository;
+    private final VisitService visitService;
 
     private final EncounterRepository encounterRepository;
     private final UserService userService;
@@ -137,8 +138,10 @@ public class PersonService {
     }
 
     public List<PersonResponseDto> getCheckedInPersonsByServiceCodeAndVisitId(String serviceCode) {
+        visitService.getPendingEncounterByStatus();
         messagingTemplate.convertAndSend(REPORT_GENERATION_PROGRESS_TOPIC, "Starting Patient line list report");
         List<Encounter> patientEncounters = encounterRepository.findAllByServiceCodeAndStatus(serviceCode, "PENDING");
+
         return patientEncounters.stream()
                 .map(Encounter::getPerson)
                 .map(this::getDtoFromPerson)
