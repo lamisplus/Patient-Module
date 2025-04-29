@@ -23,6 +23,7 @@ import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.Convert;
+import javax.transaction.Transactional;
 //import javax.validation.constraints.PastOrPresent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -121,6 +122,47 @@ public class VisitService {
         messagingTemplate.convertAndSend(PATIENT_CHECK_PROGRESS_TOPIC, "Client checked out of service");
 
     }
+
+
+    public List<Encounter> getPendingEncounterByStatus() {
+        log.info("Fetching pending encounters...");
+        List<Encounter> pendingEncounters = encounterRepository.findEncounterByStatus("PENDING");
+        log.info("Number of pending encounters: " + pendingEncounters.size());
+
+        pendingEncounters.forEach(encounter -> {
+            log.info("Processing encounter with UUID: " + encounter.getUuid());
+            idleCheckout(encounter);
+        });
+
+        return pendingEncounters;
+    }
+
+    @Transactional
+    public void idleCheckout(Encounter encounter) {
+        System.out.println("Got into Idle Checkout *******************");
+        LocalDateTime encounterDate = encounter.getEncounterDate();
+        LocalDateTime expiredDate = encounterDate.plusDays(1);
+        System.out.println("Expired Date: " + expiredDate + " Encounter Date: " + encounterDate);
+
+        if (LocalDateTime.now().isBefore(expiredDate)) {
+            log.info("Checking out encounter: " + encounter.getVisit().getUuid());
+
+            // Update the status of the encounter
+            encounter.setStatus("CHECKED-OUT");
+            encounter.setLastModifiedDate(LocalDateTime.now());
+            encounter.setLastModifiedBy("auto-checkout");
+
+            try {
+                encounterRepository.save(encounter);
+                log.info("Successfully updated encounter with UUID: " + encounter.getUuid());
+            } catch (Exception e) {
+                log.error("Error updating encounter: ", e);
+            }
+        } else {
+            log.info("Encounter with UUID: " + encounter.getUuid() + " is not expired yet.");
+        }
+    }
+
 
     private void checkoutFromAllService(Encounter encounter) {
         if (encounter.getStatus().equals("PENDING")) {
