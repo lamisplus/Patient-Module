@@ -154,12 +154,14 @@ public class VisitService {
         visitRepository.save(existVisit);
     }
 
+    public boolean isPatientHivPositive(String personId){
+        return personRepository.isPatientHivPositive(personId);
+    }
 
     public VisitDto checkInPerson(CheckInDto checkInDto) {
         Visit visit = null;
         Visit visit1 = null;
         Long personId = checkInDto.getVisitDto().getPersonId();
-
         // Fetch the person details
         Person person = personRepository.findById(personId)
                 .orElseThrow(() -> {
@@ -167,20 +169,20 @@ public class VisitService {
                     messagingTemplate.convertAndSend(PATIENT_CHECK_PROGRESS_TOPIC, errorMessage);
                     return new EntityNotFoundException(VisitService.class, "errorMessage", errorMessage);
                 });
-
         // Process each service ID
         for (Long serviceId : checkInDto.getServiceIds()) {
             Optional<PatientCheckPostService> patientCheckPostService = patientCheckPostServiceRepository.findById(serviceId);
 
             if (patientCheckPostService.isPresent()) {
                 PatientCheckPostService patientCheckPostService1 = patientCheckPostService.get();
-
+                if (patientCheckPostService1.getModuleServiceCode().toLowerCase().contains("prep") && isPatientHivPositive(String.valueOf(personId))) {
+                    String errorMessage = "HIV positive patients are not eligible for PrEP services.";
+                    throw new IllegalArgumentException(errorMessage);
+                }
                 visit1 = createVisit(checkInDto.getVisitDto(), patientCheckPostService1.getModuleServiceCode());
                 visit = getExistVisit(visit1.getId());
-
                 // Create encounter
                 createEncounter(person, visit, patientCheckPostService1.getModuleServiceCode());
-
                 messagingTemplate.convertAndSend(PATIENT_CHECK_PROGRESS_TOPIC,
                         "Client Checked: " + person.getHospitalNumber() + " into " + patientCheckPostService1.getModuleServiceName());
             } else {
@@ -189,7 +191,6 @@ public class VisitService {
                         "Service ID not found: " + serviceId + " for personId: " + personId);
             }
         }
-
         return convertEntityToDto(visit);
     }
 

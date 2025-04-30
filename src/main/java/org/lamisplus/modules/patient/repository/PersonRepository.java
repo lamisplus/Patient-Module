@@ -471,6 +471,14 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "            AND pe.status = 'PENDING' \n" +
             "            ORDER BY p.id ASC", nativeQuery = true)
     List<PersonProjection> findAllCheckedInPersonsDetails(String serviceCode);
+
+    @Query(value = "SELECT CASE \n" +
+            "    WHEN (SELECT COUNT(*) FROM hiv_status_tracker WHERE person_id = (SELECT uuid FROM patient_person WHERE id = CAST(?1 AS BIGINT))) > 0 \n" +
+            "    THEN TRUE \n" +
+            "    ELSE FALSE \n" +
+            "END AS result",
+            nativeQuery = true)
+    boolean isPatientHivPositive(String personId);
 }
 
 
