@@ -322,8 +322,10 @@ function Index(props) {
           loadPatientVisits();
         })
         .catch(error => {
-          console.log('errrrrrrrrr: ', error);
-          toast.error('Something went wrong: ', error);
+          toast.error(
+            'An error occurred. Please ensure the patient is eligible for the selected services and try again.',
+            error
+          );
           onCancelCheckIn();
         });
     } else {
@@ -332,7 +334,7 @@ function Index(props) {
       );
     }
   };
-  /**** Submit Button Processing  */
+
   const handleSubmitCheckOut = e => {
     e.preventDefault();
     const getVisitID = patientVisits.find(
