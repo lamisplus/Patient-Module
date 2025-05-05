@@ -285,20 +285,20 @@ function Index(props) {
           <Button
             variant="contained"
             style={{
-              backgroundColor: row.status === "COMPLETED" ? "#ccc" : "green",
+              backgroundColor: row.status === "COMPLETED" || row.status === "CHECKED-OUT"  ? "#ccc" : "green",
               fontSize: "14px",
               fontWeight: "bold",
               height: "35px",
             }}
             onClick={() => handleCheckOut(row.id)}
             className=" mr-1"
-            disabled={row.status === "COMPLETED"}
+            disabled={row.status === "COMPLETED" || row.status === "CHECKED-OUT"}
           >
-            <span style={{
-              textTransform: "capitalize",
-              cursor: "pointer",
-             }}>
-              {row.status === "COMPLETED" ? "Checked Out" : "Check Out"}
+           <span style={{
+             textTransform: "capitalize",
+             cursor: "pointer",
+           }}>
+              {row.status === "COMPLETED" || row.status === "CHECKED-OUT" ? "Checked Out" : "Check Out"}
             </span>
           </Button>
         ),
