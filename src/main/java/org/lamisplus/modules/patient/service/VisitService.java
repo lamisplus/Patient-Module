@@ -144,7 +144,7 @@ public class VisitService {
         LocalDateTime expiredDate = encounterDate.plusDays(1);
         System.out.println("Expired Date: " + expiredDate + " Encounter Date: " + encounterDate);
 
-        if (LocalDateTime.now().isBefore(expiredDate)) {
+        if (LocalDateTime.now().isAfter(expiredDate)) {
             log.info("Checking out encounter: " + encounter.getVisit().getUuid());
 
             // Update the status of the encounter

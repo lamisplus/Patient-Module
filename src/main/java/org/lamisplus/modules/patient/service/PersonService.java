@@ -25,7 +25,9 @@ import org.lamisplus.modules.patient.repository.PersonRepository;
 import org.lamisplus.modules.patient.repository.VisitRepository;
 import org.springframework.data.domain.*;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -138,14 +140,17 @@ public class PersonService {
         return person.isPresent();
     }
 
+//    @Scheduled(fixedDelay = 86400000)
+//    @Transactional
+//    public void processIdleCheckouts() {
+//        visitService.getPendingEncounterByStatus();
+//    }
 
     public List<PersonProjection> getCheckedInPersonsByServiceCodeAndVisitId(String serviceCode) {
         visitService.getPendingEncounterByStatus();
         return personRepository.findAllCheckedInPersonsDetails(serviceCode);
     }
-
-
-
+    
 
     public PersonResponseDto getPersonById(Long id) {
         Person person = personRepository
