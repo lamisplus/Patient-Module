@@ -27,5 +27,7 @@ public interface EncounterRepository extends JpaRepository<Encounter, Long> {
 
     List<Encounter> findByPersonAndStatus (Person person, String status);
 
+    List<Encounter> findEncounterByStatus (String status);
+
 
 }
