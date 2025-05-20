@@ -46,8 +46,4 @@ public class PersonResponseDto {
     private String latitude;
     private String longitude;
     private String source;
-
-
-
-//    private Long caseManagerId;
 }

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -54,6 +55,47 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
             "ORDER By last_modified_date DESC\n" +
             "LIMIT 1", nativeQuery = true)
     Optional<Visit> getRecentPatientVisit(String uuid);
+
+
+    @Query(value =
+            "WITH LatestVisits AS (" +
+                    "   SELECT v.person_uuid, v.id, " +
+                    "   ROW_NUMBER() OVER(PARTITION BY v.person_uuid ORDER BY v.last_modified_date DESC) AS row_num " +
+                    "   FROM patient_visit v " +
+                    "   WHERE v.person_uuid IN :personUuids " +
+                    "   AND v.visit_start_date IS NOT NULL " +
+                    "   AND v.archived = 0 " +
+                    ")" +
+                    "SELECT person_uuid, id FROM LatestVisits WHERE row_num = 1",
+            nativeQuery = true)
+    List<Object[]> findLatestVisitsForPersons(@Param("personUuids") List<String> personUuids);
+
+
+    @Query(value =
+            "WITH LatestVisits AS (" +
+                    "   SELECT pv.person_uuid, pv.id, " +
+                    "   ROW_NUMBER() OVER(PARTITION BY pv.person_uuid ORDER BY pv.last_modified_date DESC) AS row_num " +
+                    "   FROM patient_visit pv " +
+                    "   WHERE pv.person_uuid IN :personUuids " +
+                    "   AND pv.visit_start_date IS NOT NULL " +
+                    "   AND pv.archived = 0 " +
+                    ")" +
+                    "SELECT person_uuid, id FROM LatestVisits WHERE row_num = 1",
+            nativeQuery = true)
+    List<Object[]> getBatchLatestVisits(@Param("personUuids") List<String> personUuids);
+
+    @Query(value =
+            "WITH LatestVisits AS (" +
+                    "   SELECT pv.person_uuid, pv.id, " +
+                    "   ROW_NUMBER() OVER(PARTITION BY pv.person_uuid ORDER BY pv.last_modified_date DESC) AS row_num " +
+                    "   FROM patient_visit pv " +
+                    "   WHERE pv.person_uuid IN :personUuids " +
+                    "   AND pv.visit_start_date IS NOT NULL " +
+                    "   AND pv.archived = 0 " +
+                    ")" +
+                    "SELECT person_uuid, id FROM LatestVisits WHERE row_num = 1",
+            nativeQuery = true)
+    List<Object[]> getLatestVisitsForPersons(@Param("personUuids") List<String> personUuids);
 
     Optional<Visit> findByVisitStartDateAndPerson(LocalDateTime visitStartDate, Person person);
 

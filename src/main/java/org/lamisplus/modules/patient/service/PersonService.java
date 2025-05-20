@@ -294,7 +294,7 @@ public class PersonService {
         PersonResponseDto personResponseDto = new PersonResponseDto();
         Optional<Visit> visit = visitRepository.getRecentPatientVisit(person.getUuid());
            if (visit.isPresent()) {
-               //log.info("visit id {}", visit.get().getId());
+               log.info("visit id {}", visit.get().getId());
                personResponseDto.setVisitId(visit.get().getId());
            }
         personResponseDto.setId(person.getId());
@@ -412,43 +412,213 @@ public class PersonService {
                 .totalPages(totalPages).build();
     }
 
+
+
+
+    public PersonResponseDto getLightDtoFromPerson(Person person) {
+        PersonResponseDto dto = new PersonResponseDto();
+
+
+        dto.setId(person.getId());
+        dto.setUuid(person.getUuid());
+
+
+        dto.setFirstName(person.getFirstName());
+        dto.setSurname(person.getSurname());
+        dto.setOtherName(person.getOtherName());
+        dto.setSex(person.getSex());
+        dto.setGender(person.getGender());
+        dto.setDateOfBirth(person.getDateOfBirth());
+
+
+        dto.setActive(person.getActive());
+        dto.setArchived(person.getArchived());
+        dto.setFacilityId(person.getFacilityId());
+        dto.setDateOfRegistration(person.getDateOfRegistration());
+
+
+        dto.setNinNumber(person.getNinNumber());
+        dto.setEmrId(person.getEmrId());
+
+
+        dto.setIsDateOfBirthEstimated(person.getIsDateOfBirthEstimated());
+        dto.setDeceased(person.getDeceased());
+        dto.setSource(person.getSource());
+
+        return dto;
+    }
+
+    @Transactional(readOnly = true)
     public PersonMetaDataDto findPersonBySearchParam(String searchValue, int pageNo, int pageSize) {
-        Pageable paging = PageRequest.of(pageNo, pageSize, Sort.by("id").descending());
+        long startTime = System.currentTimeMillis();
+
+
         Optional<User> currentUser = this.userService.getUserWithRoles();
-        Long currentOrganisationUnitId = 0L;
-        if (currentUser.isPresent()) {
-            User user = (User) currentUser.get();
-            currentOrganisationUnitId = user.getCurrentOrganisationUnitId();
+        Long facilityId = currentUser.map(User::getCurrentOrganisationUnitId).orElse(0L);
 
+        if (facilityId == 0L) {
+            return null;
         }
-        String queryParam = "";
-        Page<Person> person = null;
-        if (!((searchValue == null) || (searchValue.equals("*")))) {
-            searchValue = searchValue.replaceAll("\\s", "");
-            searchValue = searchValue.replaceAll(",", "");
 
-            queryParam = "%" + searchValue + "%";
-            person = personRepository.findAllPersonBySearchParameters(queryParam, 0, currentOrganisationUnitId, paging);
+        long facilityTime = System.currentTimeMillis();
+        System.out.println("Facility ID retrieval: " + (facilityTime - startTime) + "ms");
+
+
+        Pageable paging = PageRequest.of(pageNo, pageSize, Sort.by("id").descending());
+
+
+        Page<Person> personPage;
+        if (searchValue == null || searchValue.equals("*")) {
+            personPage = personRepository.getAllByArchivedAndFacilityIdOrderByIdDesc(
+                    0, facilityId, paging);
         } else {
-            person = personRepository.getAllByArchivedAndFacilityIdOrderByIdDesc(0, currentOrganisationUnitId, paging);
+            String queryParam = "%" + searchValue.replaceAll("[\\s,]", "") + "%";
+            personPage = personRepository.findAllPersonBySearchParameters(
+                    queryParam, 0, facilityId, paging);
         }
 
-        if (person.hasContent()) {
+        long queryTime = System.currentTimeMillis();
+        System.out.println("Database query: " + (queryTime - facilityTime) + "ms");
 
-//            PageDTO pageDTO = this.generatePagination(person);
-//            long recordSize = pageDTO.getTotalRecords();
-//            double totalPage = pageDTO.getTotalPages();
-            PersonMetaDataDto personMetaDataDto = new PersonMetaDataDto();
-            personMetaDataDto.setTotalRecords(person.getTotalElements());
-            personMetaDataDto.setPageSize(person.getSize());
-            personMetaDataDto.setTotalPages(person.getTotalPages());
-            personMetaDataDto.setCurrentPage(person.getNumber());
-            //personMetaDataDto.setRecords(person.getContent());
-            personMetaDataDto.setRecords(person.getContent().stream().map(this::getDtoFromPerson).collect(Collectors.toList()));
-            return personMetaDataDto;
+        if (!personPage.hasContent()) {
+            return null;
         }
-        return null;
 
+
+        PersonMetaDataDto result = new PersonMetaDataDto();
+        result.setTotalRecords(personPage.getTotalElements());
+        result.setPageSize(personPage.getSize());
+        result.setTotalPages(personPage.getTotalPages());
+        result.setCurrentPage(personPage.getNumber());
+
+
+        List<Person> persons = personPage.getContent();
+        List<String> personUuids = persons.stream()
+                .map(Person::getUuid)
+                .collect(Collectors.toList());
+
+
+        Map<String, Long> visitIdMap = new HashMap<>();
+        if (!personUuids.isEmpty()) {
+            List<Object[]> visitsData = visitRepository.findLatestVisitsForPersons(personUuids);
+            for (Object[] row : visitsData) {
+                visitIdMap.put((String)row[0], ((Number)row[1]).longValue());
+            }
+        }
+
+
+        Map<String, Boolean> biometricStatusMap = new HashMap<>();
+        if (!personUuids.isEmpty()) {
+            List<Object[]> biometricData = personRepository.getBiometricStatusForPersons(personUuids);
+            for (Object[] row : biometricData) {
+                biometricStatusMap.put((String)row[0], (Boolean)row[1]);
+            }
+        }
+
+
+        List<Object> dtoList = new ArrayList<>(persons.size());
+        for (Person person : persons) {
+            PersonResponseDto dto = new PersonResponseDto();
+
+            String uuid = person.getUuid();
+            if (visitIdMap.containsKey(uuid)) {
+                Long visitId = visitIdMap.get(uuid);
+                log.info("visit id {}", visitId);
+                dto.setVisitId(visitId);
+            }
+
+            dto.setBiometricStatus(biometricStatusMap.getOrDefault(uuid, false));
+            dto.setId(person.getId());
+            dto.setIsDateOfBirthEstimated(person.getIsDateOfBirthEstimated());
+            dto.setDateOfBirth(person.getDateOfBirth());
+            dto.setFirstName(person.getFirstName());
+            dto.setSurname(person.getSurname());
+            dto.setOtherName(person.getOtherName());
+            dto.setContactPoint(person.getContactPoint());
+            dto.setAddress(person.getAddress());
+            dto.setContact(person.getContact());
+            dto.setIdentifier(person.getIdentifier());
+            dto.setEducation(person.getEducation());
+            dto.setEmploymentStatus(person.getEmploymentStatus());
+            dto.setMaritalStatus(person.getMaritalStatus());
+            dto.setSex(person.getSex());
+            dto.setGender(person.getGender());
+            dto.setDeceased(person.getDeceased());
+            dto.setDateOfRegistration(person.getDateOfRegistration());
+            dto.setActive(person.getActive());
+            dto.setNinNumber(person.getNinNumber());
+            dto.setDeceasedDateTime(person.getDeceasedDateTime());
+            dto.setOrganization(person.getOrganization());
+            dto.setArchived(person.getArchived());
+            dto.setUuid(uuid);
+            dto.setFacilityId(person.getFacilityId());
+            dto.setLatitude(person.getLatitude());
+            dto.setLongitude(person.getLongitude());
+            dto.setSource(person.getSource());
+
+            dtoList.add(dto);
+        }
+        result.setRecords(dtoList);
+
+        long dtoTime = System.currentTimeMillis();
+        System.out.println("DTO conversion: " + (dtoTime - queryTime) + "ms");
+        System.out.println("Total time: " + (dtoTime - startTime) + "ms");
+
+        return result;
+    }
+
+
+    private List<Object[]> getBatchPatientBiometricStatus(List<String> personUuids) {
+
+        List<Object[]> results = new ArrayList<>();
+
+        for (String uuid : personUuids) {
+            Boolean status = getPatientBiometricStatus(uuid);
+            results.add(new Object[]{uuid, status});
+        }
+
+        return results;
+    }
+
+    private PersonResponseDto getFullDtoFromPerson(Person person, Long visitId, Boolean biometricStatus) {
+        PersonResponseDto dto = new PersonResponseDto();
+
+
+        if (visitId != null) {
+            dto.setVisitId(visitId);
+        }
+        dto.setBiometricStatus(biometricStatus);
+
+
+        dto.setId(person.getId());
+        dto.setIsDateOfBirthEstimated(person.getIsDateOfBirthEstimated());
+        dto.setDateOfBirth(person.getDateOfBirth());
+        dto.setFirstName(person.getFirstName());
+        dto.setSurname(person.getSurname());
+        dto.setOtherName(person.getOtherName());
+        dto.setContactPoint(person.getContactPoint());
+        dto.setAddress(person.getAddress());
+        dto.setContact(person.getContact());
+        dto.setIdentifier(person.getIdentifier());
+        dto.setEducation(person.getEducation());
+        dto.setEmploymentStatus(person.getEmploymentStatus());
+        dto.setMaritalStatus(person.getMaritalStatus());
+        dto.setSex(person.getSex());
+        dto.setGender(person.getGender());
+        dto.setDeceased(person.getDeceased());
+        dto.setDateOfRegistration(person.getDateOfRegistration());
+        dto.setActive(person.getActive());
+        dto.setNinNumber(person.getNinNumber());
+        dto.setDeceasedDateTime(person.getDeceasedDateTime());
+        dto.setOrganization(person.getOrganization());
+        dto.setArchived(person.getArchived());
+        dto.setUuid(person.getUuid());
+        dto.setFacilityId(person.getFacilityId());
+        dto.setLatitude(person.getLatitude());
+        dto.setLongitude(person.getLongitude());
+        dto.setSource(person.getSource());
+
+        return dto;
     }
 
     public PersonMetaDataDto getAllActiveVisit(String searchValue, int pageNo, int pageSize) {
