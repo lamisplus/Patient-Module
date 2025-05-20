@@ -128,8 +128,7 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "ORDER BY p.id DESC",
             nativeQuery = true)
     Page<Person> getAllByArchivedAndFacilityIdOrderByIdDesc(Integer archived, Long facilityId, Pageable pageable);
-
-    // Simplified query for search
+   
     @Query(value = "SELECT p.* FROM patient_person p " +
             "WHERE (p.hospital_number ILIKE ?1 OR " +
             "       p.first_name ILIKE ?1 OR " +
@@ -181,7 +180,6 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     Integer getBiometricCountByPersonUuid(String uuid);
 
 
-    // Add to your personRepository
     @Query(
             value = "SELECT b.person_uuid, CASE WHEN COUNT(*) > 0 THEN true ELSE false END as has_biometrics " +
                     "FROM biometric b " +
