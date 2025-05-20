@@ -512,6 +512,34 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "            AND pe.status = 'PENDING' \n" +
             "            ORDER BY p.id ASC", nativeQuery = true)
     List<PersonProjection> findAllCheckedInPersonsDetails(String serviceCode);
+
+    @Query(value = "SELECT\n" +
+            "  CASE \n" +
+            "    WHEN hiv_status_count > 0 THEN TRUE\n" +
+            "    WHEN hiv_test_positive THEN TRUE\n" +
+            "    ELSE FALSE\n" +
+            "  END AS result\n" +
+            "FROM (\n" +
+            "  SELECT\n" +
+            "    (SELECT COUNT(*)\n" +
+            "     FROM hiv_status_tracker\n" +
+            "     WHERE person_id = (SELECT uuid FROM patient_person WHERE id = CAST(?1 AS BIGINT))\n" +
+            "    ) AS hiv_status_count,\n" +
+            "    EXISTS(\n" +
+            "      SELECT 1\n" +
+            "      FROM (\n" +
+            "        SELECT\n" +
+            "          hts.hiv_test_result,\n" +
+            "          ROW_NUMBER() OVER (PARTITION BY hts.person_uuid ORDER BY hts.date_visit DESC) AS rowNum\n" +
+            "        FROM hts_client hts\n" +
+            "        JOIN patient_person p ON p.uuid = hts.person_uuid\n" +
+            "        WHERE p.id = CAST(?1 AS BIGINT)\n" +
+            "      ) AS RankedVisits\n" +
+            "      WHERE rowNum = 1 AND hiv_test_result ILIKE '%Positive%'\n" +
+            "    ) AS hiv_test_positive\n" +
+            ") AS combined_checks",
+            nativeQuery = true)
+    boolean isPatientHivPositive(String personId);
 }
 
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Table,
   Modal,
@@ -11,83 +11,83 @@ import {
   FormGroup,
   Input,
   Badge,
-} from "reactstrap";
-import { makeStyles } from "@material-ui/core/styles";
-import Button from "@material-ui/core/Button";
-import "react-toastify/dist/ReactToastify.css";
-import "react-widgets/dist/css/react-widgets.css";
-import { FaEye, FaUserPlus } from "react-icons/fa";
-import SaveIcon from "@material-ui/icons/Save";
-import MatButton from "@material-ui/core/Button";
-import FingerprintIcon from "@material-ui/icons/Fingerprint";
-import { Button2, Icon, List } from "semantic-ui-react";
-import { ToastContainer, toast } from "react-toastify";
-import Alert from "@mui/material/Alert";
+} from 'reactstrap';
+import { makeStyles } from '@material-ui/core/styles';
+import Button from '@material-ui/core/Button';
+import 'react-toastify/dist/ReactToastify.css';
+import 'react-widgets/dist/css/react-widgets.css';
+import { FaEye, FaUserPlus } from 'react-icons/fa';
+import SaveIcon from '@material-ui/icons/Save';
+import MatButton from '@material-ui/core/Button';
+import FingerprintIcon from '@material-ui/icons/Fingerprint';
+import { Button2, Icon, List } from 'semantic-ui-react';
+import { ToastContainer, toast } from 'react-toastify';
+import Alert from '@mui/material/Alert';
 
-import axios from "axios";
-import { token, url as baseUrl } from "../../../api";
+import axios from 'axios';
+import { token, url as baseUrl } from '../../../api';
 
-import CircularProgress from "@mui/material/CircularProgress";
+import CircularProgress from '@mui/material/CircularProgress';
 
-import { Link, useHistory } from "react-router-dom";
+import { Link, useHistory } from 'react-router-dom';
 
-import LinearProgress from "@mui/material/LinearProgress";
+import LinearProgress from '@mui/material/LinearProgress';
 
-import _ from "lodash";
+import _ from 'lodash';
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles(theme => ({
   root: {
-    width: "100%",
-    "& .dropdown-toggle::after, .dropleft .dropdown-toggle::before, .dropright .dropdown-toggle::before, .dropup .dropdown-toggle::after":
+    width: '100%',
+    '& .dropdown-toggle::after, .dropleft .dropdown-toggle::before, .dropright .dropdown-toggle::before, .dropup .dropdown-toggle::after':
       {
-        fontFamily: "FontAwesome",
-        border: "0",
-        verticalAlign: "middle",
-        marginLeft: ".25em",
-        lineHeight: "1",
+        fontFamily: 'FontAwesome',
+        border: '0',
+        verticalAlign: 'middle',
+        marginLeft: '.25em',
+        lineHeight: '1',
       },
-    "& .dropdown-menu .dropdown-item": {
-      fontSize: "14px",
-      color: "#014d88",
-      padding: "0.3rem 1.5rem",
-      fontWeight: "bold",
+    '& .dropdown-menu .dropdown-item': {
+      fontSize: '14px',
+      color: '#014d88',
+      padding: '0.3rem 1.5rem',
+      fontWeight: 'bold',
     },
-    "& .mt-4": {
-      marginTop: "28px !important",
+    '& .mt-4': {
+      marginTop: '28px !important',
     },
-    "& .form-control": {
-      color: "#992E62",
+    '& .form-control': {
+      color: '#992E62',
     },
-    "& .form-control:focus": {
-      color: "#014d88",
+    '& .form-control:focus': {
+      color: '#014d88',
     },
-    "& .sharp ": {
-      "min-width": "35px",
-      padding: "5px",
-      height: "35px",
-      "min-height": "35px",
+    '& .sharp ': {
+      'min-width': '35px',
+      padding: '5px',
+      height: '35px',
+      'min-height': '35px',
     },
   },
   card: {
     margin: theme.spacing(20),
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
   },
 }));
 
-const RecallPatient = (props) => {
+const RecallPatient = props => {
   const classes = useStyles();
   let history = useHistory();
 
   const [biometricDevices, setbiometricDevices] = useState([]);
   const [objValues, setObjValues] = useState({
-    biometricType: "FINGERPRINT",
-    patientId: "",
-    templateType: "",
-    device: "SECUGEN",
-    index: "",
-    age: "",
+    biometricType: 'FINGERPRINT',
+    patientId: '',
+    templateType: '',
+    device: 'SECUGEN',
+    index: '',
+    age: '',
   });
   const [fingerType, setFingerType] = useState([]);
   const [devices, setDevices] = useState([]);
@@ -97,7 +97,7 @@ const RecallPatient = (props) => {
   const [successPims, setSuccessPims] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const [fingerIndex, setFingerIndex] = useState("");
+  const [fingerIndex, setFingerIndex] = useState('');
 
   const [isNewStatus, setIsNewStatus] = useState(true);
   const [checkedVal, setCheckedVal] = useState(false);
@@ -109,7 +109,7 @@ const RecallPatient = (props) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
-    let biometricItems = _.map(fingersCodeset.data, (item) => {
+    let biometricItems = _.map(fingersCodeset.data, item => {
       return _.extend({}, item, {
         captured: false,
       });
@@ -123,11 +123,10 @@ const RecallPatient = (props) => {
       .get(`${baseUrl}account`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((response) => {
-       
+      .then(response => {
         setFacilities(response.data.applicationUserOrganisationUnits);
       })
-      .catch((error) => {
+      .catch(error => {
         //console.log(error);
       });
   };
@@ -137,10 +136,10 @@ const RecallPatient = (props) => {
       .get(`${baseUrl}account`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((response) => {
+      .then(response => {
         setPermissions(response.data.permissions);
       })
-      .catch((error) => {});
+      .catch(error => {});
   };
 
   useEffect(() => {
@@ -155,47 +154,47 @@ const RecallPatient = (props) => {
       .get(`${baseUrl}modules/check?moduleName=biometric`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((response) => {
+      .then(response => {
         if (response.data === true) {
           axios
             .get(`${baseUrl}biometrics/devices?active=true`, {
               headers: { Authorization: `Bearer ${token}` },
             })
-            .then((response) => {
+            .then(response => {
               //console.log(response.data.find((x) => x.active === true));
-              setDevices(response.data.find((x) => x.active === true));
+              setDevices(response.data.find(x => x.active === true));
               setbiometricDevices(response.data);
             })
-            .catch((error) => {
+            .catch(error => {
               console.error(error);
             });
         }
       })
-      .catch((error) => {
+      .catch(error => {
         //console.log(error);
       });
   };
 
-  const handleInputChange = (e) => {
-    if (e.target.value === "Left Index Finger") {
+  const handleInputChange = e => {
+    if (e.target.value === 'Left Index Finger') {
       setFingerIndex(3);
-    } else if (e.target.value === "Left Little Finger") {
+    } else if (e.target.value === 'Left Little Finger') {
       setFingerIndex(0);
-    } else if (e.target.value === "Left Middle Finger") {
+    } else if (e.target.value === 'Left Middle Finger') {
       setFingerIndex(2);
-    } else if (e.target.value === "Left Ring Finger") {
+    } else if (e.target.value === 'Left Ring Finger') {
       setFingerIndex(1);
-    } else if (e.target.value === "Left Thumb") {
+    } else if (e.target.value === 'Left Thumb') {
       setFingerIndex(4);
-    } else if (e.target.value === "Right Index Finger") {
+    } else if (e.target.value === 'Right Index Finger') {
       setFingerIndex(6);
-    } else if (e.target.value === "Right Little Finger") {
+    } else if (e.target.value === 'Right Little Finger') {
       setFingerIndex(9);
-    } else if (e.target.value === "Right Middle Finger") {
+    } else if (e.target.value === 'Right Middle Finger') {
       setFingerIndex(7);
-    } else if (e.target.value === "Right Ring Finger") {
+    } else if (e.target.value === 'Right Ring Finger') {
       setFingerIndex(8);
-    } else if (e.target.value === "Right Thumb") {
+    } else if (e.target.value === 'Right Thumb') {
       setFingerIndex(5);
     }
 
@@ -211,23 +210,23 @@ const RecallPatient = (props) => {
     setErrors({
       ...temp,
     });
-    return Object.values(temp).every((x) => x === "");
+    return Object.values(temp).every(x => x === '');
   };
 
-  const getPatient = (patientId) => {
+  const getPatient = patientId => {
     axios
       .get(`${baseUrl}patient/${patientId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((response) => {
+      .then(response => {
         props.setPatientDetails(response.data);
       })
-      .catch((error) => {
+      .catch(error => {
         console.error(error);
       });
   };
 
-  const captureFinger = (e) => {
+  const captureFinger = e => {
     e.preventDefault();
     if (validate()) {
       setLoading(true);
@@ -236,26 +235,26 @@ const RecallPatient = (props) => {
         .post(
           `${devices.url}?reader=${
             devices.name
-          }&isNew=${"false"}&recapture=${"false"}&identify=true&identificationType=${
-            !checkedVal ? "LOCAL" : "PIMS"
-          }&personUuid=${props.personUuid ? props.personUuid : ""}`,
+          }&isNew=${'false'}&recapture=${'false'}&identify=true&identificationType=${
+            !checkedVal ? 'LOCAL' : 'PIMS'
+          }&personUuid=${props.personUuid ? props.personUuid : ''}`,
           objValues,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         )
-        .then((response) => {
+        .then(response => {
           setLoading(false);
 
-          if (response.data.type === "ERROR") {
+          if (response.data.type === 'ERROR') {
             setLoading(false);
             setTryAgain(true);
             toast.error(response.data.message.ERROR);
             setIsNewStatus(false);
-          } else if (response.data.type === "WARNING") {
+          } else if (response.data.type === 'WARNING') {
             const templateType = response.data.templateType;
             toast.warning(response.data.message.WARNING);
-          } else if (response.data.type === "SUCCESS") {
+          } else if (response.data.type === 'SUCCESS') {
             let capturedFinger = response.data;
 
             let facilityId = facilities[0].organisationUnitId;
@@ -273,7 +272,7 @@ const RecallPatient = (props) => {
                 .post(`${baseUrl}pims/verify/${facilityId}`, pimsData, {
                   headers: { Authorization: `Bearer ${token}` },
                 })
-                .then((response) => {
+                .then(response => {
                   setSuccessPims(false);
                   setCheckedVal(false);
                   if (response.data.code === 5) {
@@ -284,14 +283,14 @@ const RecallPatient = (props) => {
                     });
                   }
                 })
-                .catch((error) => {
+                .catch(error => {
                   setSuccessPims(false);
                   console.error(error);
                 });
             } else {
               if (
                 capturedFinger.clientIdentificationDTO.messageType ===
-                "SUCCESS_NO_MATCH_FOUND"
+                'SUCCESS_NO_MATCH_FOUND'
               ) {
                 toast.info(capturedFinger.clientIdentificationDTO.message, {
                   position: toast.POSITION.TOP_CENTER,
@@ -309,18 +308,18 @@ const RecallPatient = (props) => {
           } else {
             setLoading(false);
             setTryAgain(true);
-            toast.error("Something went wrong capturing biometrics...", {
+            toast.error('Something went wrong capturing biometrics...', {
               position: toast.POSITION.TOP_CENTER,
             });
           }
         })
-        .catch((error) => {
+        .catch(error => {
           setLoading(false);
         });
     }
   };
 
-  const handleChange = (e) => {
+  const handleChange = e => {
     console.error(e);
     setCheckedVal(!checkedVal);
   };
@@ -330,7 +329,7 @@ const RecallPatient = (props) => {
       <Modal
         isOpen={props.modal}
         toggle={props.toggle}
-        style={{ display: "flex", maxWidth: "100%", maxHeight: "100%" }}
+        style={{ display: 'flex', maxWidth: '100%', maxHeight: '100%' }}
         fullscreen="true"
       >
         <ModalHeader toggle={props.toggle}>
@@ -342,11 +341,11 @@ const RecallPatient = (props) => {
             <div>
               <div
                 style={{
-                  flex: "10",
-                  padding: "5px",
-                  marginLeft: "5px",
-                  border: "1px solid rgba(99, 99, 99, 0.2)",
-                  boxShadow: "rgba(99, 99, 99, 0.2) 0px 2px 8px 0px",
+                  flex: '10',
+                  padding: '5px',
+                  marginLeft: '5px',
+                  border: '1px solid rgba(99, 99, 99, 0.2)',
+                  boxShadow: 'rgba(99, 99, 99, 0.2) 0px 2px 8px 0px',
                 }}
               >
                 <Row>
@@ -354,7 +353,7 @@ const RecallPatient = (props) => {
 
                   <Col md={12}>
                     <Alert severity="info">
-                      <b style={{ textAlign: "center", fontSize: "16px" }}>
+                      <b style={{ textAlign: 'center', fontSize: '16px' }}>
                         Place the client's finger on the scanner and click the
                         scan finger button!
                       </b>
@@ -400,13 +399,13 @@ const RecallPatient = (props) => {
                       <Label
                         for="device"
                         style={{
-                          color: "#014d88",
-                          fontWeight: "bold",
-                          fontSize: "14px",
+                          color: '#014d88',
+                          fontWeight: 'bold',
+                          fontSize: '14px',
                         }}
                       >
-                        {" "}
-                        Device{" "}
+                        {' '}
+                        Device{' '}
                       </Label>
                       <Input
                         type="select"
@@ -417,8 +416,8 @@ const RecallPatient = (props) => {
                         required
                         disabled
                         style={{
-                          border: "1px solid #014D88",
-                          borderRadius: "0.2rem",
+                          border: '1px solid #014D88',
+                          borderRadius: '0.2rem',
                         }}
                       >
                         {biometricDevices.map(
@@ -430,10 +429,10 @@ const RecallPatient = (props) => {
                         )}
                       </Input>
 
-                      {errors.device !== "" ? (
+                      {errors.device !== '' ? (
                         <span className={classes.error}>{errors.device}</span>
                       ) : (
-                        ""
+                        ''
                       )}
                     </FormGroup>
                   </Col>
@@ -443,9 +442,9 @@ const RecallPatient = (props) => {
                       <Label
                         for="device"
                         style={{
-                          color: "#014d88",
-                          fontWeight: "bold",
-                          fontSize: "14px",
+                          color: '#014d88',
+                          fontWeight: 'bold',
+                          fontSize: '14px',
                         }}
                       >
                         Select Finger
@@ -458,27 +457,27 @@ const RecallPatient = (props) => {
                         value={objValues.templateType}
                         required
                         style={{
-                          border: "1px solid #014D88",
-                          borderRadius: "0.2rem",
+                          border: '1px solid #014D88',
+                          borderRadius: '0.2rem',
                         }}
                       >
                         <option value="">Select Finger </option>
 
                         {fingerType &&
-                          _.filter(fingerType, ["captured", false]).map(
-                            (value) => (
+                          _.filter(fingerType, ['captured', false]).map(
+                            value => (
                               <option key={value.id} value={value.display}>
                                 {value.display}
                               </option>
                             )
                           )}
                       </Input>
-                      {errors.templateType !== "" ? (
+                      {errors.templateType !== '' ? (
                         <span className={classes.error}>
                           {errors.templateType}
                         </span>
                       ) : (
-                        ""
+                        ''
                       )}
                     </FormGroup>
                   </Col>
@@ -487,9 +486,9 @@ const RecallPatient = (props) => {
                     <Label
                       check
                       style={{
-                        color: "#014d88",
-                        fontWeight: "bold",
-                        fontSize: "18px",
+                        color: '#014d88',
+                        fontWeight: 'bold',
+                        fontSize: '18px',
                       }}
                     >
                       PIMS
@@ -500,8 +499,8 @@ const RecallPatient = (props) => {
                       checked={checkedVal}
                       onChange={handleChange}
                       style={{
-                        border: "1px solid #014D88",
-                        borderRadius: "0.2rem",
+                        border: '1px solid #014D88',
+                        borderRadius: '0.2rem',
                       }}
                     />
                   </Col>
@@ -514,8 +513,8 @@ const RecallPatient = (props) => {
                           variant="contained"
                           color="primary"
                           onClick={captureFinger}
-                          className={"mt-4"}
-                          style={{ backgroundColor: "#992E62" }}
+                          className={'mt-4'}
+                          style={{ backgroundColor: '#992E62' }}
                           startIcon={<FingerprintIcon />}
                           disabled={loading}
                         >
@@ -528,8 +527,8 @@ const RecallPatient = (props) => {
                           type="button"
                           variant="contained"
                           color="primary"
-                          className={"mt-4"}
-                          style={{ backgroundColor: "#992E62" }}
+                          className={'mt-4'}
+                          style={{ backgroundColor: '#992E62' }}
                           startIcon={<CircularProgress />}
                           disabled={loading}
                         >
@@ -546,7 +545,7 @@ const RecallPatient = (props) => {
                         <LinearProgress />
                       </>
                     ) : (
-                      ""
+                      ''
                     )}
                   </Col>
                   <Col md={12}>
@@ -556,7 +555,7 @@ const RecallPatient = (props) => {
                         <LinearProgress />
                       </>
                     ) : (
-                      ""
+                      ''
                     )}
                   </Col>
                 </Row>
@@ -585,7 +584,7 @@ const RecallPatient = (props) => {
                           <td>{props.patientDetails.sex}</td>
 
                           <td>
-                            Biometrics{" "}
+                            Biometrics gg{' '}
                             {props.patientDetails.biometricStatus === true ? (
                               <Badge color="success"> Captured</Badge>
                             ) : (
@@ -595,7 +594,7 @@ const RecallPatient = (props) => {
                           <td>
                             <Link
                               to={{
-                                pathname: "/patient-dashboard",
+                                pathname: '/patient-dashboard',
                                 state: {
                                   patientObj: props.patientDetails,
                                   permissions: permissions,
@@ -607,12 +606,12 @@ const RecallPatient = (props) => {
                                 color="primary"
                                 className=" float-right mr-1"
                                 startIcon={<FaEye size="25" />}
-                                style={{ backgroundColor: "#014d88" }}
+                                style={{ backgroundColor: '#014d88' }}
                               >
                                 <span
                                   style={{
-                                    textTransform: "capitalize",
-                                    fontWeight: "bolder",
+                                    textTransform: 'capitalize',
+                                    fontWeight: 'bolder',
                                   }}
                                 >
                                   Patient Records
@@ -623,7 +622,7 @@ const RecallPatient = (props) => {
                         </tr>
                       ) : (
                         props.pimsEnrollment &&
-                        props.pimsEnrollment.map((pims) => (
+                        props.pimsEnrollment.map(pims => (
                           <tr>
                             <td>
                               <b>Art Start Date: </b>

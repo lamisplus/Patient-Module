@@ -36,7 +36,20 @@ public class EncounterService {
 
 
     private final UserService userService;
+
+    public boolean isPatientHivPositive(String personId){
+        return personRepository.isPatientHivPositive(personId);
+    }
+    public void isPositivePatientPostException(String personId,String serviceCode){
+        if (serviceCode.toLowerCase().contains("prep") && isPatientHivPositive(String.valueOf(personId))) {
+            String errorMessage = "HIV positive patients are not eligible for PrEP services.";
+            throw new IllegalArgumentException(errorMessage);
+        }
+    }
     public List<EncounterResponseDto> registerEncounter(EncounterRequestDto encounterRequestDto) {
+        Long personId = encounterRequestDto.getPersonId();
+        String postServiceCode = encounterRequestDto.getServiceCode().toString();
+        isPositivePatientPostException(String.valueOf(personId),postServiceCode);
         Long visitId = encounterRequestDto.getVisitId();
         Visit visit = visitRepository.findById(visitId).orElseThrow(() -> new EntityNotFoundException(EncounterService.class, "errorMessage", "No visit found with Id " + visitId));
         List<EncounterResponseDto> encounterRequestDtos = new ArrayList<>();
