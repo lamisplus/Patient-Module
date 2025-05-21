@@ -157,27 +157,37 @@ function Index(props) {
       checkInDate: format(new Date(newDate), 'yyyy-MM-dd hh:mm'),
     },
   });
-  const loadServices = useCallback(async () => {
+ const loadServices = useCallback(async () => {
     try {
       const response = await axios.get(`${baseUrl}patient/post-service`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      //setServices(response.data);
+
       setAllServices(response.data);
-      setServices(
-        Object.entries(response.data).map(([key, value]) => ({
+
+
+      const mappedServices = Object.entries(response.data).map(
+        ([key, value]) => ({
           label: value.moduleServiceName,
           value: value.moduleServiceCode,
-        }))
+        })
       );
-      /*            setSelectedServices(
-                            _.uniq(_.map(userDetail.applicationUserOrganisationUnits, 'organisationUnitName'))
-                        )*/
+
+ 
+      const triageOnly = mappedServices.filter(
+        (service) => service.label === "Triage"
+      );
+
+
+      setServices(triageOnly);
+
+      // const triageService = mappedServices.find(service => service.label === "Triage");
+      // console.log("Triage service:", triageService);
     } catch (e) {
       await Swal.fire({
-        icon: 'error',
-        title: 'Oops...',
-        text: 'An error occurred fetching services!',
+        icon: "error",
+        title: "Oops...",
+        text: "An error occurred fetching services!",
       });
     }
   }, []);
