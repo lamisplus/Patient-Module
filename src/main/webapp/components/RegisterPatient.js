@@ -353,7 +353,7 @@ const RegisterPatient = (props) => {
   };
   const calculate_age = (dob) => {
     const today = new Date();
-    const dateParts = dob.split("-");
+    const dateParts = dob?.split("-");
     const birthDate = new Date(dob); // create a date object directlyfrom`dob1`argument
     let age_now = today.getFullYear() - birthDate.getFullYear();
 
