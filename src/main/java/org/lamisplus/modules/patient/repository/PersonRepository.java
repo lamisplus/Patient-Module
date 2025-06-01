@@ -168,10 +168,24 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     @Query(value = "SELECT count(*) FROM patient_person p WHERE p.archived = 0", nativeQuery = true)
     Integer getTotalRecords();
 
-    @Query(value = "SELECT * FROM patient_person pp INNER JOIN patient_visit pv ON pp.uuid=pv.person_uuid WHERE (first_name ilike ?1 OR surname ilike ?1 OR other_name ilike ?1 OR full_name ilike ?1 OR hospital_number ilike ?1) AND pv.archived=?2 AND pp.archived=?2 AND pp.facility_id=?3 AND pv.visit_end_date is null", nativeQuery = true)
+    @Query(value = "SELECT pp.* FROM patient_person pp " +
+            "WHERE pp.archived = ?2 AND pp.facility_id = ?3 " +
+            "AND EXISTS (SELECT 1 FROM patient_visit pv " +
+            "            WHERE pv.person_uuid = pp.uuid " +
+            "            AND pv.visit_end_date IS NULL " +
+            "            AND pv.archived = ?2) " +
+            "AND (pp.first_name ILIKE ?1 OR pp.surname ILIKE ?1 OR pp.other_name ILIKE ?1 " +
+            "     OR pp.full_name ILIKE ?1 OR pp.hospital_number ILIKE ?1)",
+            nativeQuery = true)
     Page<Person> findCheckedInPersonBySearchParameters(String queryParam, Integer archived, Long facilityId, Pageable pageable);
 
-    @Query(value = "SELECT DISTINCT pp.* FROM patient_person pp INNER JOIN patient_visit pv ON pp.uuid=pv.person_uuid WHERE pv.archived=?1 AND pp.archived=?1 AND pp.facility_id=?2 AND pv.visit_end_date is null", nativeQuery = true)
+    @Query(value = "SELECT pp.* FROM patient_person pp " +
+            "WHERE pp.archived = ?1 AND pp.facility_id = ?2 " +
+            "AND EXISTS (SELECT 1 FROM patient_visit pv " +
+            "            WHERE pv.person_uuid = pp.uuid " +
+            "            AND pv.visit_end_date IS NULL " +
+            "            AND pv.archived = ?1)",
+            nativeQuery = true)
     Page<Person> findAllCheckedInPerson(Integer archived, Long facilityId, Pageable pageable);
 
     @Query(
@@ -437,91 +451,95 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "FROM patient_person " +
             "GROUP BY EXTRACT(YEAR FROM date_of_registration)", nativeQuery = true)
     List<Object[]> countRegistrationsByYearAndSex();
-    
-    @Query(value = "\n" +
-            "WITH base_patient AS (\n" +
-            "    SELECT \n" +
-            "        p.id, p.created_by, p.date_of_registration, \n" +
-            "        p.first_name, p.surname, p.other_name, \n" +
-            "        p.hospital_number, p.date_of_birth, \n" +
-            "        p.is_date_of_birth_estimated, p.sex, \n" +
-            "        p.facility_id, p.uuid\n" +
-            "    FROM patient_person p\n" +
-            "    WHERE p.archived = 0\n" +
-            "),\n" +
-            "relevant_visits AS (\n" +
-            "    SELECT DISTINCT pe.person_uuid, v.id AS visit_id\n" +
-            "    FROM patient_encounter pe\n" +
-            "    JOIN patient_visit v ON v.uuid = pe.visit_id\n" +
-            "    WHERE pe.service_code = ?1 AND pe.status = 'PENDING'\n" +
-            "),\n" +
-            "hiv_art_status AS (\n" +
-            "    SELECT DISTINCT person_uuid, TRUE AS commenced\n" +
-            "    FROM hiv_art_clinical\n" +
-            "    WHERE archived = 0 AND is_commencement IS TRUE\n" +
-            "),\n" +
-            "clinical_eval AS (\n" +
-            "    SELECT DISTINCT person_uuid, TRUE AS has_eval\n" +
-            "    FROM hiv_observation\n" +
-            "    WHERE type = 'Clinical evaluation' AND archived = 0\n" +
-            "),\n" +
-            "mental_health AS (\n" +
-            "    SELECT DISTINCT person_uuid, TRUE AS has_mental_health\n" +
-            "    FROM hiv_observation\n" +
-            "    WHERE type = 'Mental health' AND archived = 0\n" +
-            ")\n" +
-            "SELECT \n" +
-            "    p.id,\n" +
-            "    p.created_by AS createby,\n" +
-            "    p.date_of_registration AS dateofregistration,\n" +
-            "    p.first_name AS firstname,\n" +
-            "    p.surname AS surname,\n" +
-            "    p.other_name AS othername,\n" +
-            "    CASE \n" +
-            "        WHEN p.other_name IS NULL OR p.other_name = '' \n" +
-            "        THEN p.first_name || ' ' || p.surname\n" +
-            "        ELSE p.first_name || ' ' || p.other_name || ' ' || p.surname\n" +
-            "    END AS fullname,\n" +
-            "    p.hospital_number AS hospitalnumber,\n" +
-            "    CAST(EXTRACT(YEAR FROM AGE(CURRENT_DATE, p.date_of_birth)) AS INTEGER) AS age,\n" +
-            "    INITCAP(p.sex) AS sex,\n" +
-            "    p.date_of_birth AS dateofbirth,\n" +
-            "    p.is_date_of_birth_estimated AS isdobestimated,\n" +
-            "    p.facility_id AS facilityid,\n" +
-            "    p.uuid AS personuuid,\n" +
-            "    (pc.display IS NOT NULL) AS isenrolled,\n" +
-            "    e.target_group_id AS targetgroupid,\n" +
-            "    e.id AS enrollmentid,\n" +
-            "    e.unique_id AS uniqueid,\n" +
-            "    pc.display AS currentstatus,\n" +
-            "    ca.commenced,\n" +
-            "    (b.biometric_type IS NOT NULL) AS biometricstatus,\n" +
-            "    rv.visit_id AS visitid,\n" +
-            "    COALESCE(ce.has_eval, FALSE) AS clinicalevaluation,\n" +
-            "    COALESCE(mh.has_mental_health, FALSE) AS mentalhealth,\n" +
-            "    (pa.person_uuid IS NOT NULL) AS isOnAnc,\n" +
-            "    (pmt.person_uuid IS NOT NULL) AS isOnPmtct,\n" +
-            "    (prep.person_uuid IS NOT NULL) AS isOnPrep,\n" +
-            "    (hts.person_uuid IS NOT NULL) AS isOnHts,\n" +
-            "    (hts_rst.person_uuid IS NOT NULL) AS isOnHtsRiskStratification,\n" +
-            "    pmt.hiv_status AS hivStatus,\n" +
-            "    pa.static_hiv_status AS staticHivStatus\n" +
-            "FROM base_patient p\n" +
-            "JOIN relevant_visits rv ON rv.person_uuid = p.uuid\n" +
-            "LEFT JOIN biometric b ON b.person_uuid = p.uuid\n" +
-            "LEFT JOIN hiv_enrollment e ON e.person_uuid = p.uuid\n" +
-            "LEFT JOIN base_application_codeset pc ON pc.id = e.status_at_registration_id\n" +
-            "LEFT JOIN hiv_art_status ca ON ca.person_uuid = p.uuid\n" +
-            "LEFT JOIN clinical_eval ce ON ce.person_uuid = p.uuid\n" +
-            "LEFT JOIN mental_health mh ON mh.person_uuid = p.uuid\n" +
-            "LEFT JOIN pmtct_anc pa ON pa.person_uuid = p.uuid AND pa.archived = 0\n" +
-            "LEFT JOIN pmtct_enrollment pmt ON pmt.person_uuid = p.uuid AND pmt.archived = 0\n" +
-            "LEFT JOIN prep_enrollment prep ON prep.person_uuid = p.uuid AND prep.archived = 0\n" +
-            "LEFT JOIN hts_client hts ON hts.person_uuid = p.uuid AND hts.archived = 0\n" +
-            "LEFT JOIN hts_risk_stratification hts_rst ON hts_rst.person_uuid = p.uuid AND hts_rst.archived = 0\n" +
-            "ORDER BY p.id ASC", nativeQuery = true)
-    List<PersonProjection> findAllCheckedInPersonsDetails(String serviceCode);
 
+
+    @Query(value = "WITH base_patient AS ( \n" +
+            "                SELECT  \n" +
+            "                    p.id, p.created_by, p.date_of_registration,  \n" +
+            "                    p.first_name, p.surname, p.other_name,  \n" +
+            "                    p.hospital_number, p.date_of_birth,  \n" +
+            "                    p.is_date_of_birth_estimated, p.sex,  \n" +
+            "                    p.facility_id, p.uuid \n" +
+            "                FROM patient_person p \n" +
+            "                WHERE p.archived = 0 \n" +
+            "            ), \n" +
+            "            relevant_visits AS ( \n" +
+            "                SELECT DISTINCT pe.person_uuid, v.id AS visit_id \n" +
+            "                FROM patient_encounter pe \n" +
+            "                JOIN patient_visit v ON v.uuid = pe.visit_id \n" +
+            "                WHERE pe.service_code = ?1 AND pe.status = 'PENDING' \n" +
+            "            ), \n" +
+            "            hiv_art_status AS ( \n" +
+            "                SELECT DISTINCT person_uuid, TRUE AS commenced \n" +
+            "                FROM hiv_art_clinical \n" +
+            "                WHERE archived = 0 AND is_commencement IS TRUE \n" +
+            "            ), \n" +
+            "            clinical_eval AS ( \n" +
+            "                SELECT DISTINCT person_uuid, TRUE AS has_eval \n" +
+            "                FROM hiv_observation \n" +
+            "                WHERE type = 'Clinical evaluation' AND archived = 0 \n" +
+            "            ), \n" +
+            "            mental_health AS ( \n" +
+            "                SELECT DISTINCT person_uuid, TRUE AS has_mental_health \n" +
+            "                FROM hiv_observation \n" +
+            "                WHERE type = 'Mental health' AND archived = 0 \n" +
+            "            ),\n" +
+            "            biometric AS(\n" +
+            "                SELECT DISTINCT person_uuid, TRUE AS biometricstatus\n" +
+            "                FROM biometric \n" +
+            "                WHERE person_uuid IS NOT NULL AND archived = 0\n" +
+            "            )\n" +
+            "            SELECT  \n" +
+            "                p.id, \n" +
+            "                p.created_by AS createby, \n" +
+            "                p.date_of_registration AS dateofregistration, \n" +
+            "                p.first_name AS firstname, \n" +
+            "                p.surname AS surname, \n" +
+            "                p.other_name AS othername, \n" +
+            "                CASE  \n" +
+            "                    WHEN p.other_name IS NULL OR p.other_name = ''  \n" +
+            "                    THEN p.first_name || ' ' || p.surname \n" +
+            "                    ELSE p.first_name || ' ' || p.other_name || ' ' || p.surname \n" +
+            "                END AS fullname, \n" +
+            "                p.hospital_number AS hospitalnumber, \n" +
+            "                CAST(EXTRACT(YEAR FROM AGE(CURRENT_DATE, p.date_of_birth)) AS INTEGER) AS age, \n" +
+            "                INITCAP(p.sex) AS sex, \n" +
+            "                p.date_of_birth AS dateofbirth, \n" +
+            "                p.is_date_of_birth_estimated AS isdobestimated, \n" +
+            "                p.facility_id AS facilityid, \n" +
+            "                p.uuid AS personuuid, \n" +
+            "                (pc.display IS NOT NULL) AS isenrolled, \n" +
+            "                e.target_group_id AS targetgroupid, \n" +
+            "                e.id AS enrollmentid, \n" +
+            "                e.unique_id AS uniqueid, \n" +
+            "                pc.display AS currentstatus, \n" +
+            "                ca.commenced, \n" +
+            "                rv.visit_id AS visitid, \n" +
+            "                COALESCE(ce.has_eval, FALSE) AS clinicalevaluation, \n" +
+            "                COALESCE(mh.has_mental_health, FALSE) AS mentalhealth,\n" +
+            "                COALESCE(b.biometricstatus, FALSE) AS biometricstatus, \n" +
+            "                (pa.person_uuid IS NOT NULL) AS isOnAnc, \n" +
+            "                (pmt.person_uuid IS NOT NULL) AS isOnPmtct, \n" +
+            "                (prep.person_uuid IS NOT NULL) AS isOnPrep, \n" +
+            "                (hts.person_uuid IS NOT NULL) AS isOnHts, \n" +
+            "                (hts_rst.person_uuid IS NOT NULL) AS isOnHtsRiskStratification, \n" +
+            "                pmt.hiv_status AS hivStatus, \n" +
+            "                pa.static_hiv_status AS staticHivStatus \n" +
+            "            FROM base_patient p \n" +
+            "            JOIN relevant_visits rv ON rv.person_uuid = p.uuid \n" +
+            "            LEFT JOIN hiv_enrollment e ON e.person_uuid = p.uuid \n" +
+            "            LEFT JOIN base_application_codeset pc ON pc.id = e.status_at_registration_id \n" +
+            "            LEFT JOIN hiv_art_status ca ON ca.person_uuid = p.uuid \n" +
+            "            LEFT JOIN clinical_eval ce ON ce.person_uuid = p.uuid \n" +
+            "            LEFT JOIN mental_health mh ON mh.person_uuid = p.uuid \n" +
+            "            LEFT JOIN biometric b ON b.person_uuid = p.uuid \n" +
+            "            LEFT JOIN pmtct_anc pa ON pa.person_uuid = p.uuid AND pa.archived = 0 \n" +
+            "            LEFT JOIN pmtct_enrollment pmt ON pmt.person_uuid = p.uuid AND pmt.archived = 0 \n" +
+            "            LEFT JOIN prep_enrollment prep ON prep.person_uuid = p.uuid AND prep.archived = 0 \n" +
+            "            LEFT JOIN hts_client hts ON hts.person_uuid = p.uuid AND hts.archived = 0 \n" +
+            "            LEFT JOIN hts_risk_stratification hts_rst ON hts_rst.person_uuid = p.uuid AND hts_rst.archived = 0 \n" +
+            "            ORDER BY p.id ASC", nativeQuery = true)
+    List<PersonProjection> findAllCheckedInPersonsDetails(String serviceCode);
 
     @Query(value = "SELECT\n" +
             "  CASE \n" +

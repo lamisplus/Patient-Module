@@ -147,7 +147,7 @@ public class PersonService {
 //    }
 
     public List<PersonProjection> getCheckedInPersonsByServiceCodeAndVisitId(String serviceCode) {
-        visitService.getPendingEncounterByStatus();
+//        visitService.getPendingEncounterByStatus();
         return personRepository.findAllCheckedInPersonsDetails(serviceCode);
     }
     

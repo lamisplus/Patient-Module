@@ -50,8 +50,37 @@ public class VisitController {
     }
 
     @PostMapping("/checkin")
-    public ResponseEntity <VisitDto> checkInVisitByPersonId(@RequestBody CheckInDto checkInDto) {
-        return ResponseEntity.ok (visitService.checkInPerson (checkInDto));
+    public ResponseEntity<VisitDto> checkInVisitByPersonId(@RequestBody CheckInDto checkInDto) {
+        // Add validation at controller level
+        if (checkInDto == null) {
+            throw new IllegalArgumentException("CheckInDto cannot be null");
+        }
+
+        if (checkInDto.getVisitDto() == null) {
+            throw new IllegalArgumentException("VisitDto cannot be null");
+        }
+
+        if (checkInDto.getVisitDto().getPersonId() == null) {
+            throw new IllegalArgumentException("Person ID cannot be null");
+        }
+
+        if (checkInDto.getServiceIds() == null || checkInDto.getServiceIds().isEmpty()) {
+            throw new IllegalArgumentException("Service IDs cannot be null or empty");
+        }
+
+        // Check for null service IDs in the list
+        for (Long serviceId : checkInDto.getServiceIds()) {
+            if (serviceId == null) {
+                throw new IllegalArgumentException("Service ID cannot be null");
+            }
+        }
+
+        System.out.println("=== DEBUG BACKEND ===");
+        System.out.println("CheckInDto: " + checkInDto);
+        System.out.println("Person ID: " + checkInDto.getVisitDto().getPersonId());
+        System.out.println("Service IDs: " + checkInDto.getServiceIds());
+
+        return ResponseEntity.ok(visitService.checkInPerson(checkInDto));
     }
 
     @PutMapping(value = "/{id}")

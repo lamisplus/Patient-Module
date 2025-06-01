@@ -30,6 +30,7 @@ import "./patient.css";
 import { Modal } from "react-bootstrap";
 import { Label as LabelSui } from "semantic-ui-react";
 import { Icon } from "semantic-ui-react";
+import useCodesets from "./hook/useCodesets";
 
 library.add(faCheckSquare, faCoffee, faEdit, faTrash);
 
@@ -103,7 +104,19 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
+const CODESET_KEYS = [
+  "SEX",
+  "MARITAL_STATUS",
+  "EDUCATION",
+  "OCCUPATION",
+  "RELATIONSHIP",
+];
+
 const RegisterPatient = (props) => {
+  const {
+    getOptions,
+  } = useCodesets(CODESET_KEYS);
+
   const [basicInfo, setBasicInfo] = useState({
     active: true,
     streetAddress: "",
@@ -201,13 +214,7 @@ const RegisterPatient = (props) => {
       const response = await axios.get(`${baseUrl}patient/${patientId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const sexCodeset = await axios.get(
-        `${baseUrl}application-codesets/v2/SEX`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
       const patient = response.data;
-
-
 
       setAllContacts(patient?.contact?.contact);
       setPatientFacilityId(patient.facilityId);
@@ -218,9 +225,10 @@ const RegisterPatient = (props) => {
         (obj) => obj.type == "HospitalNumber"
       );
 
-      const sex = _.find(sexCodeset.data, {
-        display: _.upperFirst(_.lowerCase(patient.sex)),
-      }).id;
+      const sexOptions = getOptions("SEX");
+      const sex = sexOptions.find(
+        (option) => option.display.toLowerCase() === patient.sex.toLowerCase()
+      )?.id;
 
       const phone = phoneNumberFormatCheck(
         contactPoint?.contactPoint?.find((obj) => obj.type == "phone")
@@ -275,14 +283,9 @@ const RegisterPatient = (props) => {
         email: email?.value,
       });
     }
-  }, []);
+  }, [getOptions]);
 
   useEffect(() => {
-    loadGenders();
-    loadMaritalStatus();
-    loadEducation();
-    loadOccupation();
-    loadRelationships();
     loadTopLevelCountry();
     GetCountry();
     setStateByCountryId();
@@ -292,51 +295,6 @@ const RegisterPatient = (props) => {
     }
   }, [getPatient]);
 
-  const loadGenders = useCallback(async () => {
-    try {
-      const response = await axios.get(
-        `${baseUrl}application-codesets/v2/SEX`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setGenders(response.data.sort());
-    } catch (e) {}
-  }, []);
-  const loadMaritalStatus = useCallback(async () => {
-    try {
-      const response = await axios.get(
-        `${baseUrl}application-codesets/v2/MARITAL_STATUS`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMaritalStatusOptions(response.data.sort());
-    } catch (e) {}
-  }, []);
-  const loadEducation = useCallback(async () => {
-    try {
-      const response = await axios.get(
-        `${baseUrl}application-codesets/v2/EDUCATION`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setEducationOptions(response.data.sort());
-    } catch (e) {}
-  }, []);
-  const loadOccupation = useCallback(async () => {
-    try {
-      const response = await axios.get(
-        `${baseUrl}application-codesets/v2/OCCUPATION`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setOccupationOptions(response.data.sort());
-    } catch (e) {}
-  }, []);
-  const loadRelationships = useCallback(async () => {
-    try {
-      const response = await axios.get(
-        `${baseUrl}application-codesets/v2/RELATIONSHIP`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setRelationshipOptions(response.data.sort());
-    } catch (e) {}
-  }, []);
   const loadTopLevelCountry = useCallback(async () => {
     const response = await axios.get(
       `${baseUrl}organisation-units/parent-organisation-units/0`,
@@ -353,7 +311,7 @@ const RegisterPatient = (props) => {
   };
   const calculate_age = (dob) => {
     const today = new Date();
-    const dateParts = dob.split("-");
+    const dateParts = dob?.split("-");
     const birthDate = new Date(dob); // create a date object directlyfrom`dob1`argument
     let age_now = today.getFullYear() - birthDate.getFullYear();
 
@@ -579,13 +537,12 @@ const RegisterPatient = (props) => {
     setAllContacts([...allContacts]);
   };
   const handleEditRelative = (relative, index) => {
-
     setRelatives(relative);
     setShowRelative(true);
     allContacts.splice(index, 1);
   };
   const getRelationship = (relationshipId) => {
-    const relationship = relationshipOptions.find(
+    const relationship = getOptions("RELATIONSHIP").find(
       (obj) => obj.id == relationshipId
     );
     return relationship ? relationship.display : "";
@@ -1058,7 +1015,7 @@ const RegisterPatient = (props) => {
                             }}
                           >
                             <option value={""}>Select</option>
-                            {genders.map((gender, index) => (
+                            {getOptions("SEX").map((gender) => (
                               <option key={gender.id} value={gender.id}>
                                 {gender.display}
                               </option>
@@ -1176,16 +1133,11 @@ const RegisterPatient = (props) => {
                             }}
                           >
                             <option value={""}>Select</option>
-                            {maritalStatusOptions.map(
-                              (maritalStatusOption, index) => (
-                                <option
-                                  key={maritalStatusOption.id}
-                                  value={maritalStatusOption.id}
-                                >
-                                  {maritalStatusOption.display}
-                                </option>
-                              )
-                            )}
+                            {getOptions("MARITAL_STATUS").map((status) => (
+                              <option key={status.id} value={status.id}>
+                                {status.display}
+                              </option>
+                            ))}
                           </select>
                         </FormGroup>
                       </div>
@@ -1208,16 +1160,11 @@ const RegisterPatient = (props) => {
                             }}
                           >
                             <option value={""}>Select</option>
-                            {occupationOptions.map(
-                              (occupationOption, index) => (
-                                <option
-                                  key={occupationOption.id}
-                                  value={occupationOption.id}
-                                >
-                                  {occupationOption.display}
-                                </option>
-                              )
-                            )}
+                            {getOptions("OCCUPATION").map((occupation) => (
+                              <option key={occupation.id} value={occupation.id}>
+                                {occupation.display}
+                              </option>
+                            ))}
                           </select>
                           {errors.employmentStatusId !== "" ? (
                             <span className={classes.error}>
@@ -1247,12 +1194,9 @@ const RegisterPatient = (props) => {
                             }}
                           >
                             <option value={""}>Select</option>
-                            {educationOptions.map((educationOption, index) => (
-                              <option
-                                key={educationOption.id}
-                                value={educationOption.id}
-                              >
-                                {educationOption.display}
+                            {getOptions("EDUCATION").map((education) => (
+                              <option key={education.id} value={education.id}>
+                                {education.display}
                               </option>
                             ))}
                           </select>
@@ -1634,13 +1578,13 @@ const RegisterPatient = (props) => {
                                     onChange={handleInputChangeRelatives}
                                   >
                                     <option value={""}>Select</option>
-                                    {relationshipOptions.map(
-                                      (relative, index) => (
+                                    {getOptions("RELATIONSHIP").map(
+                                      (relationship) => (
                                         <option
-                                          key={relative.id}
-                                          value={relative.id}
+                                          key={relationship.id}
+                                          value={relationship.id}
                                         >
-                                          {relative.display}
+                                          {relationship.display}
                                         </option>
                                       )
                                     )}
