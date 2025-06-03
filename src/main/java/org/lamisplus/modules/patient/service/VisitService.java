@@ -151,7 +151,9 @@ public class VisitService {
             encounter.setStatus("CHECKED-OUT");
             encounter.setLastModifiedDate(LocalDateTime.now());
             encounter.setLastModifiedBy("auto-checkout");
-
+            Visit visit = encounter.getVisit();
+            visit.setVisitEndDate(LocalDateTime.now());
+            visitRepository.save(visit);
             try {
                 encounterRepository.save(encounter);
                 log.info("Successfully updated encounter with UUID: " + encounter.getUuid());

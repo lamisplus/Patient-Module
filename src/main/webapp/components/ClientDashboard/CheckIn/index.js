@@ -191,6 +191,7 @@ function Index(props) {
       });
     }
   }, []);
+
   const loadPatientVisits = useCallback(async () => {
     try {
       const response = await axios.get(
@@ -211,6 +212,7 @@ function Index(props) {
       });
     }
   }, []);
+
   let visitTypesRows = null;
   if (services && services.length > 0) {
     visitTypesRows = services.map((service, index) => (

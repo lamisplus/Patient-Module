@@ -64,8 +64,6 @@ public class VisitController {
         visitService.archivedVisit (id);
         return ResponseEntity.accepted ().build ();
     }
-
-
     @SendTo(PATIENT_CHECK_PROGRESS_TOPIC)
     public String broadcastMessage(@Payload String message) {
         return message;
