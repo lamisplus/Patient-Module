@@ -320,7 +320,7 @@ const PatientList = (props) => {
   };
 
   const getHospitalNumber = (identifier) => {
-    const hospitalNumber = identifier.identifier.find(
+    const hospitalNumber = identifier?.identifier?.find(
       (obj) => obj.type == "HospitalNumber"
     );
     return hospitalNumber ? hospitalNumber.value : "";
@@ -328,8 +328,8 @@ const PatientList = (props) => {
 
   const getAddress = (address) => {
     const city =
-      address && address.address && address.address.length > 0
-        ? address.address[0].city
+      address && address?.address && address?.address?.length > 0
+        ? address?.address[0]?.city
         : null;
     return city;
   };

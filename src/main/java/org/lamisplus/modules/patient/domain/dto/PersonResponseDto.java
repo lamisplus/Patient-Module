@@ -43,5 +43,11 @@ public class PersonResponseDto {
     private Integer archived;
     private String uuid;
     private String dynamicHivStatus;
+    private String latitude;
+    private String longitude;
+    private String source;
+
+
+
 //    private Long caseManagerId;
 }

@@ -13,6 +13,8 @@ import { Col, Row } from "reactstrap";
 import { Label } from "semantic-ui-react";
 import PropTypes from "prop-types";
 import { withStyles } from "@material-ui/core/styles";
+import Chip from '@mui/material/Chip';
+import Paper from '@mui/material/Paper';
 
 const styles = (theme) => ({
   root: {
@@ -65,10 +67,12 @@ function Index(props) {
   const toggleModal = () => setModal(!modal);
 
   const [biometricStatus, setBiometricStatus] = useState(false);
+  const [biometricCount, setBiometricCount] = useState([]);
   const [devices, setDevices] = useState([]);
   useEffect(() => {
     setPatientBiometricStatus(props.patientBiometricStatus);
     TemplateType();
+    BiometricCount();
   }, [props.patientBiometricStatus]);
   //Get list of KP
   const TemplateType = () => {
@@ -95,6 +99,22 @@ function Index(props) {
         //console.log(error);
       });
   };
+
+  const BiometricCount = () => {
+    axios
+      .get(`${baseUrl}biometrics/person/${patientObj.uuid}/biometric-count`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((response) => {
+        console.log(response.data)
+          setBiometricCount(response.data);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  };
+
+
   const getHospitalNumber = (identifier) => {
     const hospitalNumber = identifier?.identifier?.find(
       (obj) => obj.type == "HospitalNumber"
@@ -240,6 +260,7 @@ function Index(props) {
           </Row>
         </AccordionSummary>
         <AccordionDetails className={classes.details}>
+          <div>
           {biometricStatus === true ? (
             <>
               <div>
@@ -271,8 +292,39 @@ function Index(props) {
               </div>
             </>
           )}
-        </AccordionDetails>
-      </Accordion>
+          </div>
+          <div>
+          <Paper
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              listStyle: 'none',
+              p: 0.5,
+              m: 0,
+            }}
+            component="ul"
+          >
+
+
+      {biometricCount.map((item, index) => (
+        <Chip
+          key={index}
+          label={'R' + item.recapture +' - '+ item.count}
+          sx={{
+            fontSize: '16px',
+            padding: '5px',
+            backgroundColor: item.count < 6 ? 'maroon' : '',
+            color: item.count < 6 ? 'white' : ''
+
+          }}
+        />
+      ))}
+
+          </Paper>
+        </div>
+      </AccordionDetails>
+    </Accordion>
       {/*
             <CaptureBiometric  modalstatus={modal} togglestatus={toggleModal} patientId={patientObj.id} biometricDevices={devices} setPatientBiometricStatus={setPatientBiometricStatus} />
 */}
@@ -283,5 +335,42 @@ function Index(props) {
 Index.propTypes = {
   classes: PropTypes.object.isRequired,
 };
+
+function numberToWord(number) {
+  const units = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+  const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+  const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+  if (number === 0) return 'zero';
+  if (number < 0) return 'minus ' + numberToWord(-number);
+
+  let words = '';
+
+  if (number >= 1000) {
+      words += numberToWord(Math.floor(number / 1000)) + ' thousand ';
+      number %= 1000;
+  }
+
+  if (number >= 100) {
+      words += units[Math.floor(number / 100)] + ' hundred ';
+      number %= 100;
+  }
+
+  if (number >= 20) {
+      words += tens[Math.floor(number / 10)] + ' ';
+      number %= 10;
+  }
+
+  if (number >= 10) {
+      words += teens[number - 10];
+      number = 0;
+  }
+
+  if (number > 0) {
+      words += units[number];
+  }
+
+  return words.trim();
+}
 
 export default withStyles(styles)(Index);

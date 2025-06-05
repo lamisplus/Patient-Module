@@ -19,6 +19,9 @@ import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { makeStyles } from "@material-ui/core/styles";
 import moment from "moment";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import RecallPatient from "../../RecallPatient";
+
 const useStyles = makeStyles((theme) => ({
   root: {
     width: "100%",
@@ -99,6 +102,17 @@ const useStyles = makeStyles((theme) => ({
 }));
 let newDate = new Date();
 function Index(props) {
+
+  const [patientDetails, setPatientDetails] = useState(null);
+  const [pimsEnrollment, setPimsEnrollment] = useState([]);
+  const [enablePPI, setEnablePPI] = useState(true);
+  const [modalRecall, setModalRecall] = useState(false);
+  const toggleRecall = () => {
+    setPatientDetails(null);
+    setPimsEnrollment([]);
+    setModalRecall(!modalRecall);
+  };
+
   const userDetail =
     props.location && props.location.state ? props.location.state.user : null;
   const [loading, setLoading] = useState("");
@@ -412,6 +426,19 @@ function Index(props) {
           ) : (
             ""
           )}
+
+          <Link >
+              <MatButton
+                  className=" float-right mr-1"
+                  variant="contained"
+                  floated="left"
+                  startIcon={<FontAwesomeIcon icon="fa-solid fa-fingerprint" />}
+                  style={{backgroundColor:"rgb(153, 46, 98)", color:'#fff', height:'35px'}}
+                  onClick={toggleRecall}
+              >
+                  <span style={{ textTransform: "capitalize" }}>Identify</span>
+              </MatButton>
+          </Link>
         </div>
       </div>
       <Modal
@@ -652,7 +679,18 @@ function Index(props) {
         </ModalBody>
       </Modal>
       {/* End of Checkout Modal */}
+
+      <RecallPatient
+        modal={modalRecall}
+        toggle={toggleRecall}
+        patientDetails={patientDetails}
+        setPatientDetails={setPatientDetails}
+        pimsEnrollment={pimsEnrollment}
+        setPimsEnrollment={setPimsEnrollment}
+        personUuid={patientObj.uuid}
+      />
     </>
+    
   );
 }
 

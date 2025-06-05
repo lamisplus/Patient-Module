@@ -154,4 +154,14 @@
             ALTER TABLE patient_person ADD COLUMN longitude varchar(255);
         </sql>
     </changeSet>
+    <changeSet failOnError="false" author="Joshua Gabriel" id="patientQuery-002">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="patient_person" columnName="source" />
+            </not>
+        </preConditions>
+        <sql>
+            ALTER TABLE patient_person ADD COLUMN source varchar(25);
+        </sql>
+    </changeSet>
 </databaseChangeLog>

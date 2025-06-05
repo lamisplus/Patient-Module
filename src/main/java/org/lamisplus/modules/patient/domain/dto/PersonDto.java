@@ -49,6 +49,7 @@ public class PersonDto implements Serializable {
     private final String uuid;
     private final String latitude;
     private final String longitude;
+    private final String source;
 //    private Long caseManagerId;
 }
 

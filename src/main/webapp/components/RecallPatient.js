@@ -238,7 +238,7 @@ const RecallPatient = (props) => {
             devices.name
           }&isNew=${"false"}&recapture=${"false"}&identify=true&identificationType=${
             !checkedVal ? "LOCAL" : "PIMS"
-          }`,
+          }&personUuid=${props.personUuid ? props.personUuid : ""}`,
           objValues,
           {
             headers: { Authorization: `Bearer ${token}` },

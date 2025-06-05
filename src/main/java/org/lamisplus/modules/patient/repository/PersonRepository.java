@@ -219,6 +219,175 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     @Query(value ="SELECT * FROM patient_person WHERE last_modified_date > ?1 AND facility_id=?2", nativeQuery = true)
     public List<Person> getAllDueForServerUpload(LocalDateTime dateLastSync, Long facilityId);
 
+    @Query(value =
+            "SELECT * " +
+                    "FROM patient_person p " +
+                    "JOIN (" +
+                    "    SELECT DISTINCT person_uuid, jsonb_build_object('recapture', array_agg(DISTINCT recapture)) AS mobile_extra " +
+                    "    FROM biometric b " +
+                    "    WHERE archived = ?1 " +
+                    " AND facility_id = ?2 " +
+                    "    GROUP BY person_uuid " +
+                    "    HAVING COUNT(person_uuid) >= 6 " +
+                    ") b ON p.uuid = b.person_uuid " +
+                    "JOIN LATERAL ( " +
+                    "    SELECT 1 " +
+                    "    FROM jsonb_array_elements(p.address->'address') AS addr " +
+                    "    WHERE addr->>'district' IN (?3) " +
+                    ") addr_filter ON true", nativeQuery = true)
+    Page<Person> findPersonByLga(Integer archived, Long facilityId, List<String> lgaIds, Pageable pageable);
+
+    @Query(value = "select \n" +
+            "  distinct pp.id as id, \n" +
+            "  pp.uuid as personUuid, \n" +
+            "  pp.deceased as deceased, \n" +
+            "  pp.deceased_date_time as deceasedDateTime, \n" +
+            "  pp.sex as sex, \n" +
+            "  pp.date_of_birth as dateOfBirth, \n" +
+            "  pp.date_of_registration as dateOfRegistration, \n" +
+            "  pp.archived as archived, \n" +
+            "  pp.nin_number as ninNumber, \n" +
+            "  pp.emr_id as emrId, \n" +
+            "  pp.first_name as firstName, \n" +
+            "  pp.surname as surname, \n" +
+            "  pp.other_name as otherName, \n" +
+            "  pp.hospital_number as hospitalNumber, \n" +
+            "  lab_test_name as labTestName,\n" +
+            "  group_name as groupName,\n" +
+            "  result_reported as resultReported,\n" +
+            "  last_vl_date as lastVlDate,\n" +
+            "  max_dsd_date as maxDsdDate,\n" +
+            "  last_drug_pickup_date as lastDrugPickupDate,\n" +
+            "  next_appointment as nextAppointment\n" +
+            "from \n" +
+            "  patient_person pp \n" +
+            "  left join (\n" +
+            "    select \n" +
+            "      distinct pp.*, \n" +
+            "      case_manager_info.* \n" +
+            "    from \n" +
+            "      patient_person pp \n" +
+            "      join (\n" +
+            "        select \n" +
+            "          distinct cmp.person_uuid, \n" +
+            "          cm.id, \n" +
+            "          cm.first_name, \n" +
+            "          cm.last_name, \n" +
+            "          cm.user_id, \n" +
+            "          cm.designation \n" +
+            "        from \n" +
+            "          case_manager cm \n" +
+            "          join case_manager_patients cmp on cm.id = cmp.case_manager_id\n" +
+            "      ) case_manager_info on pp.uuid = case_manager_info.person_uuid\n" +
+            "  ) cm on cm.person_uuid = pp.uuid \n" +
+            "  left join case_manager_patients pcm ON pcm.person_uuid = pp.uuid \n" +
+            "  left join(\n" +
+            "    select \n" +
+            "      distinct on (lt.patient_uuid) lt.patient_uuid, \n" +
+            "      lt.last_test_date, \n" +
+            "      llt.lab_test_name, \n" +
+            "      lltg.group_name \n" +
+            "    from \n" +
+            "      (\n" +
+            "        select \n" +
+            "          distinct lt.patient_uuid, \n" +
+            "          lt.lab_test_id, \n" +
+            "          lt.lab_test_group_id, \n" +
+            "          mtd.last_test_date \n" +
+            "        from \n" +
+            "          laboratory_test lt \n" +
+            "          join (\n" +
+            "            select \n" +
+            "              patient_uuid, \n" +
+            "              max(date_created) last_test_date \n" +
+            "            from \n" +
+            "              laboratory_test \n" +
+            "            group by \n" +
+            "              patient_uuid\n" +
+            "          ) mtd on lt.patient_uuid = mtd.patient_uuid \n" +
+            "          and lt.date_created = mtd.last_test_date \n" +
+            "        where \n" +
+            "          lt.date_created is not null\n" +
+            "      ) lt \n" +
+            "      left join (\n" +
+            "        select \n" +
+            "          * \n" +
+            "        from \n" +
+            "          laboratory_labtest \n" +
+            "        where \n" +
+            "          lab_test_name ilike '%Viral Load%'\n" +
+            "      ) llt on llt.id = lt.lab_test_id \n" +
+            "      left join laboratory_labtestgroup lltg on lltg.id = llt.labtestgroup_id \n" +
+            "      and lt.lab_test_group_id = lltg.id \n" +
+            "    order by \n" +
+            "      lt.patient_uuid, \n" +
+            "      lt.last_test_date desc\n" +
+            "  ) labtests on pp.uuid = labtests.patient_uuid \n" +
+            "  left join (\n" +
+            "    select \n" +
+            "      distinct on (lr.patient_uuid) lr.patient_uuid, \n" +
+            "      lr.result_reported, \n" +
+            "      mvld.last_vl_date \n" +
+            "    from \n" +
+            "      laboratory_result lr \n" +
+            "      join (\n" +
+            "        select \n" +
+            "          patient_uuid, \n" +
+            "          max(date_result_reported) last_vl_date \n" +
+            "        from \n" +
+            "          laboratory_result \n" +
+            "        group by \n" +
+            "          patient_uuid\n" +
+            "      ) mvld on lr.patient_uuid = mvld.patient_uuid \n" +
+            "      and lr.date_result_reported = mvld.last_vl_date \n" +
+            "    where \n" +
+            "      lr.date_result_reported is not null\n" +
+            "  ) patient_latest_vL_results on pp.uuid = patient_latest_vL_results.patient_uuid \n" +
+            "  left join (\n" +
+            "    select \n" +
+            "      distinct on (hap.person_uuid) hap.person_uuid, \n" +
+            "      ldpd.last_drug_pickup_date, \n" +
+            "      hap.next_appointment \n" +
+            "    from \n" +
+            "      hiv_art_pharmacy hap \n" +
+            "      join (\n" +
+            "        select \n" +
+            "          person_uuid, \n" +
+            "          max(visit_date) last_drug_pickup_date \n" +
+            "        from \n" +
+            "          hiv_art_pharmacy \n" +
+            "        group by \n" +
+            "          person_uuid\n" +
+            "      ) ldpd on hap.person_uuid = ldpd.person_uuid \n" +
+            "      and hap.visit_date = ldpd.last_drug_pickup_date \n" +
+            "    where \n" +
+            "      hap.visit_date is not null \n" +
+            "      and hap.archived = 0\n" +
+            "  ) pharmacy_results on pp.uuid = pharmacy_results.person_uuid \n" +
+            "  left join (\n" +
+            "    select \n" +
+            "      dde.person_uuid dsd_person_uuid, \n" +
+            "      mdd.max_dsd_date \n" +
+            "    from \n" +
+            "      dsd_devolvement dde \n" +
+            "      join (\n" +
+            "        select \n" +
+            "          person_uuid, \n" +
+            "          max(date_devolved) max_dsd_date \n" +
+            "        from \n" +
+            "          dsd_devolvement \n" +
+            "        group by \n" +
+            "          person_uuid\n" +
+            "      ) mdd on dde.person_uuid = mdd.person_uuid \n" +
+            "      and dde.date_devolved = mdd.max_dsd_date \n" +
+            "    where \n" +
+            "      dde.date_devolved is not null\n" +
+            "  ) dsd_results on pp.uuid = dsd_results.dsd_person_uuid \n" +
+            "where \n" +
+            "  cm.user_id = ?1 \n" +
+            "  and pp.archived = 0\n", nativeQuery = true)
+    List<Object[]> findPersonByUser(String userId);
+
     @Query(value = "SELECT CASE WHEN sex = 'Female' THEN 'Female' WHEN sex = 'Male' THEN 'Male' ELSE 'Others' END AS name, COUNT(*) AS count FROM patient_person GROUP BY sex", nativeQuery = true)
     List<Object[]> countRegistrationsBySex();
 
@@ -228,7 +397,6 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "FROM patient_person " +
             "GROUP BY EXTRACT(YEAR FROM date_of_registration)", nativeQuery = true)
     List<Object[]> countRegistrationsByYearAndSex();
-
 }
 
 
