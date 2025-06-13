@@ -172,11 +172,11 @@ function Index(props) {
         })
       );
 
-      const triageOnly = mappedServices.filter(
-        (service) => service.label === "Triage"
-      );
+      // const triageOnly = mappedServices.filter(
+      //   (service) => service.label === "Triage"
+      // );
 
-      setServices(triageOnly);
+      setServices(mappedServices);
 
       // const triageService = mappedServices.find(service => service.label === "Triage");
       // console.log("Triage service:", triageService);

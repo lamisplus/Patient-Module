@@ -158,7 +158,6 @@ public class EncounterService {
     }
     @PutMapping(value = "/encounter/status-update/{id}/{status}")
     public EncounterStatusResponseDto statusUpdate(@PathVariable Long id, @PathVariable String status) {
-        System.out.println("status update api has been hit");
         Optional<Encounter> encounter = this.encounterRepository.findById(id);
         if ((status.equalsIgnoreCase("PENDING")) ||
                 (status.equalsIgnoreCase("COMPLETED"))) {
