@@ -23,6 +23,7 @@ import org.lamisplus.modules.patient.domain.entity.Visit;
 import org.lamisplus.modules.patient.repository.EncounterRepository;
 import org.lamisplus.modules.patient.repository.PersonRepository;
 import org.lamisplus.modules.patient.repository.VisitRepository;
+import org.lamisplus.modules.patient.utility.EncounterUtil;
 import org.springframework.data.domain.*;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -147,10 +148,10 @@ public class PersonService {
 //    }
 
     public List<PersonProjection> getCheckedInPersonsByServiceCodeAndVisitId(String serviceCode) {
-        visitService.getPendingEncounterByStatus();
+        EncounterUtil.getPendingEncounterByStatus(this.encounterRepository,this.visitRepository);
         return personRepository.findAllCheckedInPersonsDetails(serviceCode);
     }
-    
+
 
     public PersonResponseDto getPersonById(Long id) {
         Person person = personRepository
@@ -622,6 +623,7 @@ public class PersonService {
     }
 
     public PersonMetaDataDto getAllActiveVisit(String searchValue, int pageNo, int pageSize) {
+        EncounterUtil.getPendingEncounterByStatus(this.encounterRepository,this.visitRepository);
         Pageable paging = PageRequest.of(pageNo, pageSize, Sort.by("id").descending());
         ArrayList<PersonResponseDto> checkedInPeople = new ArrayList<>();
         Optional<User> currentUser = this.userService.getUserWithRoles();
@@ -965,7 +967,7 @@ public class PersonService {
     private LocalDate convertToLocalDate(Object date) {
         if (date instanceof Date) {
             return ((Date) date).toLocalDate();
-        } else if (date instanceof java.sql.Timestamp) {
+        } else if (date instanceof Timestamp) {
             return ((Timestamp) date).toLocalDateTime().toLocalDate();
         } else if (date instanceof java.util.Date) {
             return ((java.util.Date) date).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
