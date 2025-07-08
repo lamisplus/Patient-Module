@@ -129,14 +129,19 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             nativeQuery = true)
     Page<Person> getAllByArchivedAndFacilityIdOrderByIdDesc(Integer archived, Long facilityId, Pageable pageable);
    
-    @Query(value = "SELECT p.* FROM patient_person p " +
-            "WHERE (p.hospital_number ILIKE ?1 OR " +
-            "       p.first_name ILIKE ?1 OR " +
-            "       p.surname ILIKE ?1 OR " +
-            "       p.other_name ILIKE ?1 OR " +
-            "       p.full_name ILIKE ?1) " +
-            "AND p.archived = ?2 AND p.facility_id = ?3 " +
-            "ORDER BY p.id DESC",
+    @Query(value = "SELECT DISTINCT p.*  \n" +
+            "          FROM patient_person p  \n" +
+            "          LEFT JOIN LATERAL jsonb_array_elements(p.contact_point->'contactPoint') AS elem ON true  \n" +
+            "          WHERE (  \n" +
+            "            p.hospital_number ILIKE ?1  OR  \n" +
+            "            p.first_name ILIKE ?1  OR  \n" +
+            "            p.surname ILIKE ?1  OR  \n" +
+            "            p.other_name ILIKE ?1  OR  \n" +
+            "            p.full_name ILIKE ?1  OR  \n" +
+            "            (elem->>'value' ILIKE ?1 )  \n" +
+            "          )  \n" +
+            "          AND p.archived = ?2  \n" +
+            "          AND p.facility_id = ?3",
             nativeQuery = true)
     Page<Person> findAllPersonBySearchParameters(String queryParam, Integer archived, Long facilityId, Pageable pageable);
 
