@@ -1,16 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState,memo } from "react";
+import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { useHistory } from "react-router-dom";
-import { useForm } from "react-hook-form";
 import {
   Button,
   Card,
   CardContent,
   CircularProgress,
-  FormControl,
-  Grid,
-  MenuItem,
-  Paper,
-  TextField,
   Typography,
 } from "@mui/material";
 import axios from "axios";
@@ -285,20 +279,29 @@ function Index(props) {
           <Button
             variant="contained"
             style={{
-              backgroundColor: row.status === "COMPLETED" || row.status === "CHECKED-OUT"  ? "#ccc" : "green",
+              backgroundColor:
+                row.status === "COMPLETED" || row.status === "CHECKED-OUT"
+                  ? "#ccc"
+                  : "green",
               fontSize: "14px",
               fontWeight: "bold",
               height: "35px",
             }}
             onClick={() => handleCheckOut(row.id)}
             className=" mr-1"
-            disabled={row.status === "COMPLETED" || row.status === "CHECKED-OUT"}
+            disabled={
+              row.status === "COMPLETED" || row.status === "CHECKED-OUT"
+            }
           >
-           <span style={{
-             textTransform: "capitalize",
-             cursor: "pointer",
-           }}>
-              {row.status === "COMPLETED" || row.status === "CHECKED-OUT" ? "Checked Out" : "Check Out"}
+            <span
+              style={{
+                textTransform: "capitalize",
+                cursor: "pointer",
+              }}
+            >
+              {row.status === "COMPLETED" || row.status === "CHECKED-OUT"
+                ? "Checked Out"
+                : "Check Out"}
             </span>
           </Button>
         ),
@@ -363,6 +366,14 @@ function Index(props) {
             </Tab.Pane>
           ) : null,
       },
+      {
+        menuItem: "Encounters",
+        render: () => (
+          <Tab.Pane>
+            <p>No Lab or Pharmacy Enccounters For This Patient</p>
+          </Tab.Pane>
+        ),
+      },
     ],
     [
       columns,
@@ -387,7 +398,6 @@ function Index(props) {
           <CardContent>
             <div className="text-center">
               <CircularProgress />
-              {/* <Typography>Loading patient data...</Typography> */}
             </div>
           </CardContent>
         </Card>
