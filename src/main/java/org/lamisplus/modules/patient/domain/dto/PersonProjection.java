@@ -1,6 +1,7 @@
 package org.lamisplus.modules.patient.domain.dto;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public interface PersonProjection {
     Long getId();
@@ -9,7 +10,7 @@ public interface PersonProjection {
     String getFirstName();
     String getSurname();
     String getOtherName();
-    String getfullname();
+    String getFullname();
     String getHospitalNumber();
     Integer getAge();
     String getSex();
@@ -25,6 +26,7 @@ public interface PersonProjection {
     Boolean getCommenced();
     Boolean getBiometricStatus();
     Long getVisitId();
+    LocalDateTime getCheckInDate();
     Boolean getClinicalEvaluation();
     Boolean getMentalHealth();
     Boolean getIsOnAnc();
@@ -34,4 +36,8 @@ public interface PersonProjection {
     Boolean getIsOnHtsRiskStratification();
     String getHivStatus();
     String getStaticHivStatus();
+
+    // New fields added
+    String getPhoneNumber();
+    String getAddress();
 }
