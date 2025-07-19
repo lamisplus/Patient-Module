@@ -157,6 +157,7 @@ function Index(props) {
       checkInDate: format(new Date(newDate), "yyyy-MM-dd hh:mm"),
     },
   });
+
   const loadServices = useCallback(async () => {
     try {
       const response = await axios.get(`${baseUrl}patient/post-service`, {
@@ -172,11 +173,12 @@ function Index(props) {
         })
       );
 
-      // const triageOnly = mappedServices.filter(
-      //   (service) => service.label === "Triage"
-      // );
+      // Filter out Consultation from the services list
+      const filteredServices = mappedServices.filter(
+        (service) => service.label !== "Consultation"
+      );
 
-      setServices(mappedServices);
+      setServices(filteredServices);
 
       // const triageService = mappedServices.find(service => service.label === "Triage");
       // console.log("Triage service:", triageService);
@@ -188,40 +190,40 @@ function Index(props) {
       });
     }
   }, []);
- 
-const loadPatientVisits = useCallback(async () => {
-  try {
-    const response = await axios.get(
-      `${baseUrl}patient/visit/visit-by-patient/${patientObj.id}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    setPatientVisits(response.data);
-    console.log("Patient visits:", response.data);
 
-    // Check for ANY pending encounters across all visits
-    const hasPendingEncounter = response.data.some((visit) => {
-      // Check if visit itself is pending and not checked out
-      if (visit.checkOutDate === null && visit.status === "PENDING") {
-        return true;
-      }
-
-      // Check if any encounters within the visit are pending
-      return (
-        visit.encounters &&
-        visit.encounters.some((encounter) => encounter.status === "PENDING")
+  const loadPatientVisits = useCallback(async () => {
+    try {
+      const response = await axios.get(
+        `${baseUrl}patient/visit/visit-by-patient/${patientObj.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-    });
+      setPatientVisits(response.data);
+      console.log("Patient visits:", response.data);
 
-    console.log("Has pending encounter:", hasPendingEncounter);
-    setCheckinStatus(hasPendingEncounter);
-  } catch (e) {
-    await Swal.fire({
-      icon: "error",
-      title: "Oops...",
-      text: "An error occurred fetching services!",
-    });
-  }
-}, []);
+      // Check for ANY pending encounters across all visits
+      const hasPendingEncounter = response.data.some((visit) => {
+        // Check if visit itself is pending and not checked out
+        if (visit.checkOutDate === null && visit.status === "PENDING") {
+          return true;
+        }
+
+        // Check if any encounters within the visit are pending
+        return (
+          visit.encounters &&
+          visit.encounters.some((encounter) => encounter.status === "PENDING")
+        );
+      });
+
+      console.log("Has pending encounter:", hasPendingEncounter);
+      setCheckinStatus(hasPendingEncounter);
+    } catch (e) {
+      await Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "An error occurred fetching services!",
+      });
+    }
+  }, []);
   let visitTypesRows = null;
   if (services && services.length > 0) {
     visitTypesRows = services.map((service, index) => (

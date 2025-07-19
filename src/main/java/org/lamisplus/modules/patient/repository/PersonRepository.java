@@ -521,7 +521,7 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "    pc.display AS currentstatus,  \n" +
             "    ca.commenced,  \n" +
             "    rv.visit_id AS visitid,\n" +
-            "    rv.checkin_date AS check_in_date,\n" +
+            "    rv.checkin_date AS checkInDate,\n" +
             "    COALESCE(ce.has_eval, FALSE) AS clinicalevaluation,  \n" +
             "    COALESCE(mh.has_mental_health, FALSE) AS mentalhealth, \n" +
             "    COALESCE(b.biometricstatus, FALSE) AS biometricstatus,  \n" +
