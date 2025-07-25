@@ -51,5 +51,7 @@ public class PersonDto implements Serializable {
     private final String longitude;
     private final String source;
 //    private Long caseManagerId;
+    private final  String hospitalNumber;
+
 }
 

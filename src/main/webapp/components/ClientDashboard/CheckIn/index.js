@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useHistory } from "react-router-dom";
 import MatButton from "@material-ui/core/Button";
 import { TiArrowBack } from "react-icons/ti";
@@ -19,7 +19,7 @@ import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { makeStyles } from "@material-ui/core/styles";
 import moment from "moment";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import RecallPatient from "../../RecallPatient";
 
 const useStyles = makeStyles((theme) => ({
@@ -102,7 +102,6 @@ const useStyles = makeStyles((theme) => ({
 }));
 let newDate = new Date();
 function Index(props) {
-
   const [patientDetails, setPatientDetails] = useState(null);
   const [pimsEnrollment, setPimsEnrollment] = useState([]);
   const [enablePPI, setEnablePPI] = useState(true);
@@ -127,11 +126,12 @@ function Index(props) {
     history.location && history.location.state
       ? history.location.state.patientObj
       : {};
-  ///console.log("check in", patientObj)
-  const permissions =
-    history.location && history.location.state
-      ? history.location.state.permissions
-      : [];
+
+  const permissionsSet = useMemo(() => {
+    const permArray = history.location?.state?.permissions || [];
+    return new Set(permArray);
+  }, [history.location?.state?.permissions]);
+
   const { handleSubmit, control } = useForm();
   const [modal, setModal] = useState(false);
   const [allServices, setAllServices] = useState(null);
@@ -157,22 +157,31 @@ function Index(props) {
       checkInDate: format(new Date(newDate), "yyyy-MM-dd hh:mm"),
     },
   });
+
   const loadServices = useCallback(async () => {
     try {
       const response = await axios.get(`${baseUrl}patient/post-service`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      //setServices(response.data);
+
       setAllServices(response.data);
-      setServices(
-        Object.entries(response.data).map(([key, value]) => ({
+
+      const mappedServices = Object.entries(response.data).map(
+        ([key, value]) => ({
           label: value.moduleServiceName,
           value: value.moduleServiceCode,
-        }))
+        })
       );
-      /*            setSelectedServices(
-                            _.uniq(_.map(userDetail.applicationUserOrganisationUnits, 'organisationUnitName'))
-                        )*/
+
+      // Filter out Consultation from the services list
+      const filteredServices = mappedServices.filter(
+        (service) => service.label !== "Consultation"
+      );
+
+      setServices(filteredServices);
+
+      // const triageService = mappedServices.find(service => service.label === "Triage");
+      // console.log("Triage service:", triageService);
     } catch (e) {
       await Swal.fire({
         icon: "error",
@@ -181,6 +190,7 @@ function Index(props) {
       });
     }
   }, []);
+
   const loadPatientVisits = useCallback(async () => {
     try {
       const response = await axios.get(
@@ -188,11 +198,24 @@ function Index(props) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setPatientVisits(response.data);
-      response.data.map((visits) => {
-        if (visits.checkOutDate === null) {
-          setCheckinStatus(true);
+      console.log("Patient visits:", response.data);
+
+      // Check for ANY pending encounters across all visits
+      const hasPendingEncounter = response.data.some((visit) => {
+        // Check if visit itself is pending and not checked out
+        if (visit.checkOutDate === null && visit.status === "PENDING") {
+          return true;
         }
+
+        // Check if any encounters within the visit are pending
+        return (
+          visit.encounters &&
+          visit.encounters.some((encounter) => encounter.status === "PENDING")
+        );
       });
+
+      console.log("Has pending encounter:", hasPendingEncounter);
+      setCheckinStatus(hasPendingEncounter);
     } catch (e) {
       await Swal.fire({
         icon: "error",
@@ -322,8 +345,10 @@ function Index(props) {
           loadPatientVisits();
         })
         .catch((error) => {
-          console.log(error);
-          toast.error("Something went wrong");
+          toast.error(
+            "An error occurred. Please ensure the patient is eligible for the selected services and try again.",
+            error
+          );
           onCancelCheckIn();
         });
     } else {
@@ -332,7 +357,7 @@ function Index(props) {
       );
     }
   };
-  /**** Submit Button Processing  */
+
   const handleSubmitCheckOut = (e) => {
     e.preventDefault();
     const getVisitID = patientVisits.find(
@@ -385,31 +410,27 @@ function Index(props) {
             </MatButton>
           </Link>
 
-          {permissions.includes("patient_check_in") ||
-          permissions.includes("all_permission") ? (
-            <>
-              {checkinStatus === false ? (
-                <Button
-                  variant="contained"
-                  style={{
-                    backgroundColor: "rgb(4, 196, 217)",
-                    fontSize: "14PX",
-                    fontWeight: "bold",
-                    height: "35px",
-                  }}
-                  onClick={handleCheckIn}
-                  className=" float-right mr-1"
-                >
-                  <span style={{ textTransform: "capitalize" }}>CheckIn</span>
-                </Button>
-              ) : (
-                ""
-              )}
-            </>
-          ) : (
-            ""
-          )}
-          {checkinStatus === true ? (
+          {permissionsSet.has("patient_check_in") ||
+          permissionsSet.has("all_permission") ? (
+            <Button
+              variant="contained"
+              style={{
+                backgroundColor: checkinStatus ? "#ccc" : "rgb(4, 196, 217)",
+                fontSize: "14PX",
+                fontWeight: "bold",
+                height: "35px",
+              }}
+              onClick={handleCheckIn}
+              className="float-right mr-1"
+              disabled={checkinStatus}
+            >
+              <span style={{ textTransform: "capitalize" }}>
+                {checkinStatus ? "Already Checked In" : "Check In"}
+              </span>
+            </Button>
+          ) : null}
+
+          {/* {checkinStatus === true ? (
             <Button
               variant="contained"
               style={{
@@ -425,19 +446,23 @@ function Index(props) {
             </Button>
           ) : (
             ""
-          )}
+          )} */}
 
-          <Link >
-              <MatButton
-                  className=" float-right mr-1"
-                  variant="contained"
-                  floated="left"
-                  startIcon={<FontAwesomeIcon icon="fa-solid fa-fingerprint" />}
-                  style={{backgroundColor:"rgb(153, 46, 98)", color:'#fff', height:'35px'}}
-                  onClick={toggleRecall}
-              >
-                  <span style={{ textTransform: "capitalize" }}>Identify</span>
-              </MatButton>
+          <Link>
+            <MatButton
+              className=" float-right mr-1"
+              variant="contained"
+              floated="left"
+              startIcon={<FontAwesomeIcon icon="fa-solid fa-fingerprint" />}
+              style={{
+                backgroundColor: "rgb(153, 46, 98)",
+                color: "#fff",
+                height: "35px",
+              }}
+              onClick={toggleRecall}
+            >
+              <span style={{ textTransform: "capitalize" }}>Identify</span>
+            </MatButton>
           </Link>
         </div>
       </div>
@@ -504,39 +529,7 @@ function Index(props) {
                     </LocalizationProvider>
                   </FormGroup>
                 </Grid>
-                {/*                                <Grid item xs={8}>
 
-                                    <FormControl >
-                                        <Label for="dateOfRegistration">Select service </Label>
-                                        <Autocomplete
-                                            multiple
-                                            id="checkboxes-tags-demo"
-                                            options={services}
-                                            //disableCloseOnSelect
-                                            getOptionLabel={(option) => option.moduleServiceName}
-                                            onChange={(e, i) => {
-                                                console.log(i)
-                                                setSelectedServices({ ...selectedServices, checkInServices: i });
-                                            }}
-                                            renderOption={(props, option, { selected }) => (
-                                                <li {...props}>
-                                                    <Checkbox
-                                                        icon={icon}
-                                                        checkedIcon={checkedIcon}
-                                                        style={{ marginRight: 8 }}
-                                                        checked={selected}
-                                                    />
-                                                    {option.moduleServiceName}
-                                                </li>
-                                            )}
-                                            style={{ width: 400 }}
-                                            renderInput={(params) => (
-                                                <TextField {...params} label="Services" />
-                                            )}
-                                        />
-
-                                    </FormControl>
-                                </Grid>*/}
                 <Grid item xs={12}>
                   <FormGroup>
                     <Label
@@ -690,7 +683,6 @@ function Index(props) {
         personUuid={patientObj.uuid}
       />
     </>
-    
   );
 }
 

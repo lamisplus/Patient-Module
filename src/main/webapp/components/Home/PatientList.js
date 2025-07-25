@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useRef } from "react";
 import MaterialTable from "material-table";
 import axios from "axios";
 import { url as baseUrl, token } from "../../../../api";
 import { Link, useHistory } from "react-router-dom";
-import { Card, CardBody } from "reactstrap";
 import {
   Modal,
   ModalHeader,
@@ -14,26 +13,17 @@ import {
   Label,
   Button,
 } from "reactstrap";
-// import Button from "@material-ui/core/Button";
 import "react-toastify/dist/ReactToastify.css";
 import "react-widgets/dist/css/react-widgets.css";
 import { FaEye, FaUserPlus } from "react-icons/fa";
-import {
-  MdDashboard,
-  MdDeleteForever,
-  MdModeEdit,
-  MdPerson,
-} from "react-icons/md";
-import { Menu, MenuList, MenuButton, MenuItem } from "@reach/menu-button";
+import { MdDeleteForever, MdModeEdit, MdPerson } from "react-icons/md";
 import "@reach/menu-button/styles.css";
 import { ToastContainer } from "react-toastify";
-//import { Label } from "semantic-ui-react";
 import { makeStyles } from "@material-ui/core/styles";
 import "../patient.css";
 import SplitActionButton from "../SplitActionButton";
 
 import { forwardRef } from "react";
-//import { Button} from "react-bootstrap";
 import AddBox from "@material-ui/icons/AddBox";
 import ArrowUpward from "@material-ui/icons/ArrowUpward";
 import Check from "@material-ui/icons/Check";
@@ -52,7 +42,6 @@ import ViewColumn from "@material-ui/icons/ViewColumn";
 import FormGroup from "@mui/material/FormGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
-import TablePagination from "@mui/material/TablePagination";
 import Swal from "sweetalert2";
 
 const tableIcons = {
@@ -129,30 +118,25 @@ const PatientList = (props) => {
   localStorage.setItem("menu", JSON.stringify(0));
   const tableRef = useRef(null);
   const classes = useStyles();
-  const [patients, setPatients] = useState([]);
+
   const [permissions, setPermissions] = useState(props.permissions);
   const [loading, setLoading] = useState("");
   const [modal, setModal] = useState(false);
   const [patient, setPatient] = useState(false);
   const [enablePPI, setEnablePPI] = useState(true);
-  const [searchParams, setSearchParams] = useState("*");
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalRecords, setTotalRecords] = useState(0);
+
   const [reason, setReason] = useState({});
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   const [currentPage, setCurrentPage] = useState(1);
   const history = useHistory();
   const toggle = (id) => {
-    //        const patient = patients.find(obj => obj.id == id);
-    //        setPatient(patient);
     localStorage.setItem("patientID", JSON.stringify(id));
     setModal(!modal);
   };
 
   const handleDelete = () => {
     const patientId = localStorage.getItem("patientID");
-    console.log(patientId, reason.reason);
+    console.error(patientId, reason.reason);
     axios
       .delete(`${baseUrl}patient/${patientId}/${reason.reason}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -190,15 +174,17 @@ const PatientList = (props) => {
       },
       {
         ...(permissions.includes("view_patient") ||
-          (permissions.includes("all_permission") && {
-            name: "Dashboard",
-            type: "link",
-            icon: <MdPerson size="20" color="rgb(4, 196, 217)" />,
-            to: {
-              pathname: "/patient-dashboard",
-              state: { patientObj: row, permissions: permissions },
-            },
-          })),
+        permissions.includes("all_permission")
+          ? {
+              name: "Dashboard",
+              type: "link",
+              icon: <MdPerson size="20" color="rgb(4, 196, 217)" />,
+              to: {
+                pathname: "/patient-dashboard",
+                state: { patientObj: row, permissions: permissions },
+              },
+            }
+          : {}),
       },
       {
         ...(permissions.includes("edit_patient") ||
@@ -214,18 +200,20 @@ const PatientList = (props) => {
       },
       {
         ...(permissions.includes("delete_patient") ||
-          (permissions.includes("all_permission") && {
-            name: "Delete",
-            type: "link",
-            icon: <MdDeleteForever size="20" color="rgb(4, 196, 217)" />,
-            deleteAction: () => {
-              toggle(row.id);
-            },
-            to: {
-              pathname: "/#",
-              state: { patientObj: row, permissions: permissions },
-            },
-          })),
+        permissions.includes("all_permission")
+          ? {
+              name: "Delete",
+              type: "link",
+              icon: <MdDeleteForever size="20" color="rgb(4, 196, 217)" />,
+              deleteAction: () => {
+                toggle(row.id);
+              },
+              to: {
+                pathname: "/#",
+                state: { patientObj: row, permissions: permissions },
+              },
+            }
+          : {}),
       },
     ];
   }
@@ -280,17 +268,6 @@ const PatientList = (props) => {
         });
     });
 
-  const onDelete = async (id) => {
-    try {
-      if (id) {
-        const response = await axios.delete(`${baseUrl}patient/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        window.location.reload();
-      }
-    } catch (e) {}
-  };
-
   const onCancelDelete = () => {
     setModal(false);
   };
@@ -326,18 +303,6 @@ const PatientList = (props) => {
     return hospitalNumber ? hospitalNumber.value : "";
   };
 
-  const getAddress = (address) => {
-    const city =
-      address && address?.address && address?.address?.length > 0
-        ? address?.address[0]?.city
-        : null;
-    return city;
-  };
-
-  const getGender = (gender) => {
-    return gender.display;
-  };
-
   const enablePPIColumns = () => {
     setEnablePPI(!enablePPI);
   };
@@ -367,11 +332,6 @@ const PatientList = (props) => {
   const handleChangePage = (page) => {
     setCurrentPage(page + 1);
   };
-  const localization = {
-    pagination: {
-      labelDisplayedRows: `${currentPage} - 10 of 2022`,
-    },
-  };
 
   const handleInputChangeBasic = (e) => {
     setReason({ [e.target.name]: e.target.value });
@@ -382,9 +342,6 @@ const PatientList = (props) => {
       <ToastContainer autoClose={3000} hideProgressBar />
       <MaterialTable
         tableRef={tableRef}
-        /*onSearchChange={(e) => {
-                    handleSearchChange(e);
-                }}*/
         icons={tableIcons}
         title={<PPISelect />}
         columns={[
@@ -398,8 +355,6 @@ const PatientList = (props) => {
           { title: "Sex", field: "sex", filtering: false },
           { title: "Date Of Birth", field: "dateOfBirth", filtering: false },
           { title: "Age", field: "age", filtering: false },
-          /*{ title: "Address", field: "address", filtering: false },*/
-          /*{ title: "Status", field: "status", filtering: false },*/
           { title: "Actions", field: "actions", filtering: false },
         ]}
         isLoading={loading}

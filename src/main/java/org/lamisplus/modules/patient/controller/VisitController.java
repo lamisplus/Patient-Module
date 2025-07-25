@@ -6,6 +6,9 @@ import org.lamisplus.modules.patient.domain.dto.*;
 import org.lamisplus.modules.patient.domain.entity.Visit;
 import org.lamisplus.modules.patient.service.VisitService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,9 +20,12 @@ import java.util.List;
 public class VisitController {
     private final VisitService visitService;
 
+    public static final String PATIENT_CHECK_PROGRESS_TOPIC = "/topic/checking-in-out-process";
+    private final SimpMessageSendingOperations messagingTemplate;
+
     @PostMapping
     public ResponseEntity<Visit> createVisit(@RequestBody VisitRequest visitDto) {
-        return ResponseEntity.ok (visitService.createVisit (visitDto));
+        return ResponseEntity.ok (visitService.createVisit (visitDto, null));
     }
 
     @GetMapping
@@ -45,7 +51,36 @@ public class VisitController {
 
     @PostMapping("/checkin")
     public ResponseEntity<VisitDto> checkInVisitByPersonId(@RequestBody CheckInDto checkInDto) {
-        return ResponseEntity.ok (visitService.checkInPerson (checkInDto));
+        // Add validation at controller level
+        if (checkInDto == null) {
+            throw new IllegalArgumentException("CheckInDto cannot be null");
+        }
+
+        if (checkInDto.getVisitDto() == null) {
+            throw new IllegalArgumentException("VisitDto cannot be null");
+        }
+
+        if (checkInDto.getVisitDto().getPersonId() == null) {
+            throw new IllegalArgumentException("Person ID cannot be null");
+        }
+
+        if (checkInDto.getServiceIds() == null || checkInDto.getServiceIds().isEmpty()) {
+            throw new IllegalArgumentException("Service IDs cannot be null or empty");
+        }
+
+        // Check for null service IDs in the list
+        for (Long serviceId : checkInDto.getServiceIds()) {
+            if (serviceId == null) {
+                throw new IllegalArgumentException("Service ID cannot be null");
+            }
+        }
+
+        System.out.println("=== DEBUG BACKEND ===");
+        System.out.println("CheckInDto: " + checkInDto);
+        System.out.println("Person ID: " + checkInDto.getVisitDto().getPersonId());
+        System.out.println("Service IDs: " + checkInDto.getServiceIds());
+
+        return ResponseEntity.ok(visitService.checkInPerson(checkInDto));
     }
 
     @PutMapping(value = "/{id}")
@@ -60,4 +95,8 @@ public class VisitController {
     }
 
 
+    @SendTo(PATIENT_CHECK_PROGRESS_TOPIC)
+    public String broadcastMessage(@Payload String message) {
+        return message;
+    }
 }

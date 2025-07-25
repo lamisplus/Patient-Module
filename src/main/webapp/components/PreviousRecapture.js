@@ -103,13 +103,13 @@ const PreviousRecapture = (props) => {
   };
 
   const getRecaptureCount = () => {
-    //console.log("get recaptures");
+  
     axios
       .get(`${baseUrl}biometrics/grouped/person/${props.patientId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((response) => {
-        console.log(response.data);
+        
         let capturedDate = response.data[0].captureDate;
         let replacementDate =
           response.data[response.data.length - 1]?.replaceDate;
@@ -170,13 +170,13 @@ const PreviousRecapture = (props) => {
   };
 
   const replaceBaselinePrints = async (row) => {
-    console.log(`${row.captureDate} ${row.personUuid}`);
+    
     toggle1();
     setBaselineVal(row);
   };
 
   const is30DaysPassed = (timestamp) => {
-    console.log(timestamp);
+  
     const startDate = new Date(timestamp);
     const currentDate = new Date();
     const timeDifference = currentDate - startDate;
@@ -187,7 +187,7 @@ const PreviousRecapture = (props) => {
       return true;
     } else {
       const remainingDays = 15 - daysDifference;
-      console.log(`remaining ${remainingDays} days`);
+   
       return false;
     }
   };

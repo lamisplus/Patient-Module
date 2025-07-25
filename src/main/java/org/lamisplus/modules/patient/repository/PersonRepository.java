@@ -1,10 +1,12 @@
 package org.lamisplus.modules.patient.repository;
 
+import org.lamisplus.modules.patient.domain.dto.PersonProjection;
 import org.lamisplus.modules.patient.domain.entity.Person;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -120,13 +122,47 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     Page<Person> getAllByArchivedOrderByIdDesc(Integer archived, Pageable pageable);
 
     //@Query(value = "SELECT p.id as id, p.first_name as firstName, p.surname as surname, p.other_name as otherName, p.hospital_number as hospitalNumber, p.created_by as createdBy, CAST (EXTRACT(YEAR from AGE(NOW(),  date_of_birth)) AS INTEGER) as age, INITCAP(p.sex) as gender, p.date_of_birth as dateOfBirth FROM patient_person p WHERE p.archived=?1 AND p.facility_id=?2 GROUP BY p.id, p.first_name, p.surname, p.other_name, p.hospital_number, p.date_of_birth", nativeQuery = true)
-    @Query(value = "SELECT p.*, CAST (EXTRACT(YEAR from AGE(NOW(),  date_of_birth)) AS INTEGER) as age, INITCAP(p.sex) as gender, p.date_of_birth as dateOfBirth FROM patient_person p WHERE p.archived=?1 AND p.facility_id=?2 GROUP BY p.id, p.first_name, p.surname, p.other_name, p.hospital_number, p.date_of_birth", nativeQuery = true)
+
+    @Query(value = "SELECT p.* FROM patient_person p " +
+            "WHERE p.archived = ?1 AND p.facility_id = ?2 " +
+            "ORDER BY p.id DESC",
+            nativeQuery = true)
     Page<Person> getAllByArchivedAndFacilityIdOrderByIdDesc(Integer archived, Long facilityId, Pageable pageable);
-
-
-    @Query(value =
-            "SELECT * FROM patient_person WHERE (first_name ilike ?1 OR surname ilike ?1 OR other_name ilike ?1 OR full_name ilike ?1 OR hospital_number ilike ?1)  AND archived=?2 AND facility_id=?3", nativeQuery = true)
+   
+    @Query(value = "SELECT DISTINCT p.*  \n" +
+            "          FROM patient_person p  \n" +
+            "          LEFT JOIN LATERAL jsonb_array_elements(p.contact_point->'contactPoint') AS elem ON true  \n" +
+            "          WHERE (  \n" +
+            "            p.hospital_number ILIKE ?1  OR  \n" +
+            "            p.first_name ILIKE ?1  OR  \n" +
+            "            p.surname ILIKE ?1  OR  \n" +
+            "            p.other_name ILIKE ?1  OR  \n" +
+            "            p.full_name ILIKE ?1  OR  \n" +
+            "            (elem->>'value' ILIKE ?1 )  \n" +
+            "          )  \n" +
+            "          AND p.archived = ?2  \n" +
+            "          AND p.facility_id = ?3",
+            nativeQuery = true)
     Page<Person> findAllPersonBySearchParameters(String queryParam, Integer archived, Long facilityId, Pageable pageable);
+
+
+
+    @Query(value = " SELECT COUNT(p.id) \n" +
+            "        FROM patient_person p \n" +
+            "        WHERE (\n" +
+            "            p.hospital_number ILIKE ?1 OR \n" +
+            "            p.first_name ILIKE ?1 OR \n" +
+            "            p.surname ILIKE ?1 OR \n" +
+            "            p.other_name ILIKE ?1 OR \n" +
+            "            p.full_name ILIKE ?1\n" +
+            "        ) \n" +
+            "        AND p.archived = ?2 \n" +
+            "        AND p.facility_id = ?3", nativeQuery = true)
+    long countBySearchParameters(String queryParam, Integer archived, Long facilityId);
+
+    @Query(value = "SELECT COUNT(p.id) FROM patient_person p WHERE p.archived = ?1 AND p.facility_id = ?2", nativeQuery = true)
+    long countByArchivedAndFacilityId(Integer archived, Long facilityId);
+
 
     @Query(value = "SELECT p.* from patient_person p JOIN (select hospital_number, archived FROM patient_person b Group by hospital_number, archived HAVING count(hospital_number) > 1) b on p.hospital_number = b.hospital_number WHERE (p.first_name ilike ?1 OR p.surname ilike ?1 OR p.other_name ilike ?1 OR full_name ilike ?1 OR p.hospital_number ilike ?1) AND p.facility_id=?2 and p.archived != 2 ORDER BY p.hospital_number", nativeQuery = true)
     Page<Person> findDuplicatePersonBySearchParameters(String queryParam, Long facilityId, Pageable pageable);
@@ -137,16 +173,39 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     @Query(value = "SELECT count(*) FROM patient_person p WHERE p.archived = 0", nativeQuery = true)
     Integer getTotalRecords();
 
-    @Query(value = "SELECT * FROM patient_person pp INNER JOIN patient_visit pv ON pp.uuid=pv.person_uuid WHERE (first_name ilike ?1 OR surname ilike ?1 OR other_name ilike ?1 OR full_name ilike ?1 OR hospital_number ilike ?1) AND pv.archived=?2 AND pp.archived=?2 AND pp.facility_id=?3 AND pv.visit_end_date is null", nativeQuery = true)
+    @Query(value = "SELECT pp.* FROM patient_person pp " +
+            "WHERE pp.archived = ?2 AND pp.facility_id = ?3 " +
+            "AND EXISTS (SELECT 1 FROM patient_visit pv " +
+            "            WHERE pv.person_uuid = pp.uuid " +
+            "            AND pv.visit_end_date IS NULL " +
+            "            AND pv.archived = ?2) " +
+            "AND (pp.first_name ILIKE ?1 OR pp.surname ILIKE ?1 OR pp.other_name ILIKE ?1 " +
+            "     OR pp.full_name ILIKE ?1 OR pp.hospital_number ILIKE ?1)",
+            nativeQuery = true)
     Page<Person> findCheckedInPersonBySearchParameters(String queryParam, Integer archived, Long facilityId, Pageable pageable);
 
-    @Query(value = "SELECT DISTINCT pp.* FROM patient_person pp INNER JOIN patient_visit pv ON pp.uuid=pv.person_uuid WHERE pv.archived=?1 AND pp.archived=?1 AND pp.facility_id=?2 AND pv.visit_end_date is null", nativeQuery = true)
+    @Query(value = "SELECT pp.* FROM patient_person pp " +
+            "WHERE pp.archived = ?1 AND pp.facility_id = ?2 " +
+            "AND EXISTS (SELECT 1 FROM patient_visit pv " +
+            "            WHERE pv.person_uuid = pp.uuid " +
+            "            AND pv.visit_end_date IS NULL " +
+            "            AND pv.archived = ?1)",
+            nativeQuery = true)
     Page<Person> findAllCheckedInPerson(Integer archived, Long facilityId, Pageable pageable);
 
     @Query(
             value = "SELECT count(*) FROM biometric b WHERE b.person_uuid = ?1",
             nativeQuery = true)
     Integer getBiometricCountByPersonUuid(String uuid);
+
+
+    @Query(
+            value = "SELECT b.person_uuid, CASE WHEN COUNT(*) > 0 THEN true ELSE false END as has_biometrics " +
+                    "FROM biometric b " +
+                    "WHERE b.person_uuid IN :personUuids " +
+                    "GROUP BY b.person_uuid",
+            nativeQuery = true)
+    List<Object[]> getBiometricStatusForPersons(@Param("personUuids") List<String> personUuids);
 
 
     @Query(value = "SELECT * FROM patient_person pp WHERE uuid NOT IN (SELECT person_uuid FROM pmtct_anc pa where pa.archived = 0) and (pp.first_name ilike ?1 OR pp.surname ilike ?1 OR pp.other_name ilike ?1 OR pp.full_name ilike ?1 OR pp.hospital_number ilike ?1) AND pp.archived=?2 AND pp.facility_id=?3 AND pp.sex ilike '%FEMALE%' AND (EXTRACT (YEAR FROM now()) - EXTRACT(YEAR FROM pp.date_of_birth) >= 10 ) ORDER BY pp.id desc", nativeQuery = true)
@@ -397,6 +456,177 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "FROM patient_person " +
             "GROUP BY EXTRACT(YEAR FROM date_of_registration)", nativeQuery = true)
     List<Object[]> countRegistrationsByYearAndSex();
+
+
+    @Query(value = "WITH base_patient AS (  \n" +
+            "    SELECT   \n" +
+            "        p.id, p.created_by, p.date_of_registration,   \n" +
+            "        p.first_name, p.surname, p.other_name,   \n" +
+            "        p.hospital_number, p.date_of_birth,   \n" +
+            "        p.is_date_of_birth_estimated, p.sex,   \n" +
+            "        p.facility_id, p.uuid, p.contact_point, p.address, p.contact  \n" +
+            "    FROM patient_person p  \n" +
+            "    WHERE p.archived = 0  \n" +
+            "),  \n" +
+            "relevant_visits AS (  \n" +
+            "    SELECT pe.person_uuid, v.id AS visit_id, MAX(pe.created_date) AS checkin_date\n" +
+            "    FROM patient_encounter pe  \n" +
+            "    JOIN patient_visit v ON v.uuid = pe.visit_id  \n" +
+            "    WHERE pe.service_code = ?1 AND pe.status = 'PENDING'\n" +
+            "    GROUP BY pe.person_uuid, v.id\n" +
+            "),  \n" +
+            "hiv_art_status AS (  \n" +
+            "    SELECT DISTINCT person_uuid, TRUE AS commenced  \n" +
+            "    FROM hiv_art_clinical  \n" +
+            "    WHERE archived = 0 AND is_commencement IS TRUE  \n" +
+            "),  \n" +
+            "clinical_eval AS (  \n" +
+            "    SELECT DISTINCT person_uuid, TRUE AS has_eval  \n" +
+            "    FROM hiv_observation  \n" +
+            "    WHERE type = 'Clinical evaluation' AND archived = 0  \n" +
+            "),  \n" +
+            "mental_health AS (  \n" +
+            "    SELECT DISTINCT person_uuid, TRUE AS has_mental_health  \n" +
+            "    FROM hiv_observation  \n" +
+            "    WHERE type = 'Mental health' AND archived = 0  \n" +
+            "), \n" +
+            "biometric AS( \n" +
+            "    SELECT DISTINCT person_uuid, TRUE AS biometricstatus \n" +
+            "    FROM biometric  \n" +
+            "    WHERE person_uuid IS NOT NULL AND archived = 0 \n" +
+            ") \n" +
+            "SELECT   \n" +
+            "    p.id,  \n" +
+            "    p.created_by AS createby,  \n" +
+            "    p.date_of_registration AS dateofregistration,  \n" +
+            "    p.first_name AS firstname,  \n" +
+            "    p.surname AS surname,  \n" +
+            "    p.other_name AS othername,  \n" +
+            "    CASE   \n" +
+            "        WHEN p.other_name IS NULL OR p.other_name = ''   \n" +
+            "        THEN p.first_name || ' ' || p.surname  \n" +
+            "        ELSE p.first_name || ' ' || p.other_name || ' ' || p.surname  \n" +
+            "    END AS fullname,  \n" +
+            "    p.hospital_number AS hospitalnumber,  \n" +
+            "    CAST(EXTRACT(YEAR FROM AGE(CURRENT_DATE, p.date_of_birth)) AS INTEGER) AS age,  \n" +
+            "    INITCAP(p.sex) AS sex,  \n" +
+            "    p.date_of_birth AS dateofbirth,  \n" +
+            "    p.is_date_of_birth_estimated AS isdobestimated,  \n" +
+            "    p.facility_id AS facilityid,  \n" +
+            "    p.uuid AS personuuid,  \n" +
+            "    (pc.display IS NOT NULL) AS isenrolled,  \n" +
+            "    e.target_group_id AS targetgroupid,  \n" +
+            "    e.id AS enrollmentid,  \n" +
+            "    e.unique_id AS uniqueid,  \n" +
+            "    pc.display AS currentstatus,  \n" +
+            "    ca.commenced,  \n" +
+            "    rv.visit_id AS visitid,\n" +
+            "    rv.checkin_date AS checkInDate,\n" +
+            "    COALESCE(ce.has_eval, FALSE) AS clinicalevaluation,  \n" +
+            "    COALESCE(mh.has_mental_health, FALSE) AS mentalhealth, \n" +
+            "    COALESCE(b.biometricstatus, FALSE) AS biometricstatus,  \n" +
+            "    (pa.person_uuid IS NOT NULL) AS isOnAnc,  \n" +
+            "    (pmt.person_uuid IS NOT NULL) AS isOnPmtct,  \n" +
+            "    (prep.person_uuid IS NOT NULL) AS isOnPrep,  \n" +
+            "    (hts.person_uuid IS NOT NULL) AS isOnHts,  \n" +
+            "    (hts_rst.person_uuid IS NOT NULL) AS isOnHtsRiskStratification,  \n" +
+            "    pmt.hiv_status AS hivStatus,  \n" +
+            "    pa.static_hiv_status AS staticHivStatus,\n" +
+            "\n" +
+            "    COALESCE(\n" +
+            "        (p.contact -> 'contact' -> 0 -> 'contactPoint' ->> 'value'),\n" +
+            "        (p.contact_point -> 'contactPoint' -> 0 ->> 'value'),\n" +
+            "        (p.contact_point -> 'contactPoint' -> 1 ->> 'value')\n" +
+            "    ) AS phoneNumber,\n" +
+            " \n" +
+            "    COALESCE(\n" +
+            "    \n" +
+            "        CASE \n" +
+            "            WHEN p.contact -> 'contact' -> 0 -> 'address' IS NOT NULL \n" +
+            "            THEN TRIM(CONCAT_WS(' ',\n" +
+            "               \n" +
+            "                CASE \n" +
+            "                    WHEN p.contact -> 'contact' -> 0 -> 'address' -> 'line' IS NOT NULL \n" +
+            "                    THEN array_to_string(\n" +
+            "                        ARRAY(\n" +
+            "                            SELECT value\n" +
+            "                            FROM jsonb_array_elements_text(p.contact -> 'contact' -> 0 -> 'address' -> 'line') AS value\n" +
+            "                            WHERE value IS NOT NULL AND value != ''\n" +
+            "                        ), \n" +
+            "                        ' '\n" +
+            "                    )\n" +
+            "                    ELSE NULL\n" +
+            "                END,\n" +
+            "              \n" +
+            "                NULLIF(p.contact -> 'contact' -> 0 -> 'address' ->> 'city', '')\n" +
+            "            ))\n" +
+            "            ELSE NULL\n" +
+            "        END,\n" +
+            "        \n" +
+            "        CASE \n" +
+            "            WHEN p.address -> 'address' -> 0 IS NOT NULL \n" +
+            "            THEN TRIM(CONCAT_WS(' ',\n" +
+            "                \n" +
+            "                CASE \n" +
+            "                    WHEN p.address -> 'address' -> 0 -> 'line' IS NOT NULL \n" +
+            "                    THEN array_to_string(\n" +
+            "                        ARRAY(\n" +
+            "                            SELECT value\n" +
+            "                            FROM jsonb_array_elements_text(p.address -> 'address' -> 0 -> 'line') AS value\n" +
+            "                            WHERE value IS NOT NULL AND value != ''\n" +
+            "                        ), \n" +
+            "                        ' '\n" +
+            "                    )\n" +
+            "                    ELSE NULL\n" +
+            "                END,\n" +
+            "                NULLIF(p.address -> 'address' -> 0 ->> 'city', '')\n" +
+            "            ))\n" +
+            "            ELSE NULL\n" +
+            "        END\n" +
+            "    ) AS address\n" +
+            "FROM base_patient p  \n" +
+            "JOIN relevant_visits rv ON rv.person_uuid = p.uuid  \n" +
+            "LEFT JOIN hiv_enrollment e ON e.person_uuid = p.uuid  \n" +
+            "LEFT JOIN base_application_codeset pc ON pc.id = e.status_at_registration_id  \n" +
+            "LEFT JOIN hiv_art_status ca ON ca.person_uuid = p.uuid  \n" +
+            "LEFT JOIN clinical_eval ce ON ce.person_uuid = p.uuid  \n" +
+            "LEFT JOIN mental_health mh ON mh.person_uuid = p.uuid  \n" +
+            "LEFT JOIN biometric b ON b.person_uuid = p.uuid  \n" +
+            "LEFT JOIN pmtct_anc pa ON pa.person_uuid = p.uuid AND pa.archived = 0  \n" +
+            "LEFT JOIN pmtct_enrollment pmt ON pmt.person_uuid = p.uuid AND pmt.archived = 0  \n" +
+            "LEFT JOIN prep_enrollment prep ON prep.person_uuid = p.uuid AND prep.archived = 0  \n" +
+            "LEFT JOIN hts_client hts ON hts.person_uuid = p.uuid AND hts.archived = 0  \n" +
+            "LEFT JOIN hts_risk_stratification hts_rst ON hts_rst.person_uuid = p.uuid AND hts_rst.archived = 0  \n" +
+            "ORDER BY p.id ASC", nativeQuery = true)
+    List<PersonProjection> findAllCheckedInPersonsDetails(String serviceCode);
+
+    @Query(value = "SELECT\n" +
+            "  CASE \n" +
+            "    WHEN hiv_status_count > 0 THEN TRUE\n" +
+            "    WHEN hiv_test_positive THEN TRUE\n" +
+            "    ELSE FALSE\n" +
+            "  END AS result\n" +
+            "FROM (\n" +
+            "  SELECT\n" +
+            "    (SELECT COUNT(*)\n" +
+            "     FROM hiv_status_tracker\n" +
+            "     WHERE person_id = (SELECT uuid FROM patient_person WHERE id = CAST(?1 AS BIGINT))\n" +
+            "    ) AS hiv_status_count,\n" +
+            "    EXISTS(\n" +
+            "      SELECT 1\n" +
+            "      FROM (\n" +
+            "        SELECT\n" +
+            "          hts.hiv_test_result,\n" +
+            "          ROW_NUMBER() OVER (PARTITION BY hts.person_uuid ORDER BY hts.date_visit DESC) AS rowNum\n" +
+            "        FROM hts_client hts\n" +
+            "        JOIN patient_person p ON p.uuid = hts.person_uuid\n" +
+            "        WHERE p.id = CAST(?1 AS BIGINT)\n" +
+            "      ) AS RankedVisits\n" +
+            "      WHERE rowNum = 1 AND hiv_test_result ILIKE '%Positive%'\n" +
+            "    ) AS hiv_test_positive\n" +
+            ") AS combined_checks",
+            nativeQuery = true)
+    boolean isPatientHivPositive(String personId);
 }
 
 

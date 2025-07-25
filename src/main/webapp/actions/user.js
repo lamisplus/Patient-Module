@@ -53,7 +53,7 @@ export const update = (id, data, onSuccess, onError) => (dispatch) => {
         type: ACTION_TYPES.REGISTER_FAILURE,
         payload: "Something went wrong, please try again",
       });
-      console.log(error);
+     
     });
 };
 
@@ -107,7 +107,7 @@ export const updateUserRole = (id, data, onSuccess, onError) => (dispatch) => {
         onSuccess && onSuccess();
       } catch (err) {
         onError();
-        console.log(err);
+    
       }
     })
     .catch((error) => {
@@ -115,7 +115,7 @@ export const updateUserRole = (id, data, onSuccess, onError) => (dispatch) => {
         type: ACTION_TYPES.USERS_ERROR,
         payload: "Something went wrong, please try again",
       });
-      console.log(error);
+     
     });
 };
 

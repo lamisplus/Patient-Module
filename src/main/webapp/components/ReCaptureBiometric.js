@@ -188,8 +188,8 @@ function Biometrics(props) {
         }
       })
       .catch(async (error) => {
-        console.log("getPersonBiometrics error");
-        console.log(error);
+     
+        console.error(error);
 
         let biometricItems = _.map(fingersCodeset.data, (item) => {
           return _.extend({}, item, { captured: false });
@@ -211,7 +211,7 @@ function Biometrics(props) {
       })
       .catch((error) => {
         //console.log("cleared store error");
-        console.log(error);
+        console.error(error);
       });
   };
 
@@ -262,7 +262,7 @@ function Biometrics(props) {
               setbiometricDevices(response.data);
             })
             .catch((error) => {
-              console.log(error);
+              console.error(error);
             });
         }
       })
@@ -437,7 +437,7 @@ function Biometrics(props) {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((response) => {
-          console.log("saved", response);
+          console.error("saved", response);
           toast.success("Biometric recaptured successfully", {
             position: toast.POSITION.BOTTOM_CENTER,
           });
@@ -450,7 +450,7 @@ function Biometrics(props) {
           toast.error("Something went wrong saving biometrics", {
             position: toast.POSITION.BOTTOM_CENTER,
           });
-          console.log(error.message);
+          console.error(error.message);
         });
     } else {
       toast.error("You can't save less than 2 finger", {
@@ -468,7 +468,7 @@ function Biometrics(props) {
         }
       )
       .then((resp) => {
-        console.log(resp);
+       
         let deletedRecord = capturedFingered.filter(
           (data) => data.templateType !== x.templateType
         );
@@ -482,7 +482,7 @@ function Biometrics(props) {
         toast.error("Something went wrong", {
           position: toast.POSITION.BOTTOM_CENTER,
         });
-        console.log(error);
+        console.error(error);
       });
     // window.setTimeout(() => {
     //   let deletedRecord = capturedFingered.filter(

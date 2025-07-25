@@ -135,7 +135,7 @@ const Pims = (props) => {
       })
       .catch((error) => {
         //console.log("cleared store error");
-        console.log(error);
+        console.error(error);
       });
   };
 
@@ -162,7 +162,7 @@ const Pims = (props) => {
               setbiometricDevices(response.data);
             })
             .catch((error) => {
-              console.log(error);
+              console.error(error);
             });
         }
       })
@@ -192,7 +192,7 @@ const Pims = (props) => {
     if (validate()) {
       setLoading(true);
 
-      console.log(objValues);
+    
 
       axios
         .post(
@@ -295,7 +295,7 @@ const Pims = (props) => {
           toast.error("Something went wrong saving biometrics", {
             position: toast.POSITION.BOTTOM_CENTER,
           });
-          console.log(error.message);
+          console.error(error.message);
         });
     } else {
       toast.error("You can't save less than 2 finger", {
@@ -326,7 +326,7 @@ const Pims = (props) => {
         toast.error("Something went wrong", {
           position: toast.POSITION.BOTTOM_CENTER,
         });
-        console.log(error);
+        console.error(error);
       });
   };
 

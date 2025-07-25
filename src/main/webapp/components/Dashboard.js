@@ -146,7 +146,7 @@ const PatientList = (props) => {
             const response = await axios.get(`${baseUrl}patient`, { headers: {"Authorization" : `Bearer ${token}`} });
             setPatients(response.data);
         } catch (e) {
-            console.log(e);
+            console.error(e);
         }
     }, []);
 

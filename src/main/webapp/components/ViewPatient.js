@@ -337,7 +337,7 @@ const ViewPatient = (props) => {
         }
       })
       .catch((error) => {
-        console.log(error);
+        console.error(error);
       });
   };
   const checkNIN = async (e) => {
@@ -363,7 +363,7 @@ const ViewPatient = (props) => {
           }
         })
         .catch((error) => {
-          console.log(error);
+          console.error(error);
         });
     }
   };
@@ -431,7 +431,7 @@ const ViewPatient = (props) => {
     setShowRelative(false);
   };
   const handleEmailValidation = (email) => {
-    console.log("ValidateEmail was called with", email);
+    console.error("ValidateEmail was called with", email);
 
     const isValid = isValidEmail(email);
     if (!isValid) {
@@ -440,7 +440,7 @@ const ViewPatient = (props) => {
     const validityChanged =
       (errors.email && isValid) || (!errors.email && !isValid);
     if (validityChanged) {
-      console.log("Fire tracker with", isValid ? "Valid" : "Invalid");
+      console.error("Fire tracker with", isValid ? "Valid" : "Invalid");
     }
 
     return isValid;
@@ -530,7 +530,7 @@ const ViewPatient = (props) => {
         toast.success("Patient Register successful");
         history.push("/");
       } catch (e) {
-        console.log(e);
+        console.error(e);
         toast.error("An error occured while registering a patient !", {
           position: toast.POSITION.TOP_RIGHT,
         });
@@ -946,7 +946,7 @@ const ViewPatient = (props) => {
                                 /\s/g,
                                 ""
                               );
-                              console.log(e.target.value);
+                           
                               checkHospitalNumber(e.target.value);
                             }}
                             onChange={checkHospitalNumber}
@@ -982,7 +982,7 @@ const ViewPatient = (props) => {
                             id="ninNumber"
                             autoComplete="off"
                             onChange={(e) => {
-                              console.log("here");
+                             
                               clearErrors("ninNumber");
                               e.target.value = e.target.value.replace(
                                 /\D/g,
@@ -1164,7 +1164,7 @@ const ViewPatient = (props) => {
                             onChange={(e) => {
                               clearErrors("dob");
                               if (new Date(e.target.value) instanceof Date) {
-                                console.log("date");
+                          
                                 handleDobChange(e);
                                 clearErrors("dob");
                               } else {

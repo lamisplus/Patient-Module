@@ -74,7 +74,7 @@ const PatientBiometrics = (props) => {
               setbiometricDevices(response.data);
             })
             .catch((error) => {
-              console.log(error);
+              console.error(error);
             });
         }
       })
@@ -144,7 +144,7 @@ const PatientBiometrics = (props) => {
       )
       .then((response) => {
         setLoading(false);
-        console.log(response);
+       
 
         if (response.data.type === "ERROR") {
           setLoading(false);
@@ -158,7 +158,7 @@ const PatientBiometrics = (props) => {
           setIsNewStatus(false);
         } else if (response.data.type === "SUCCESS") {
           const templateType = response.data.templateType;
-          console.log(templateType);
+         
           if (templateType === "Left Thumb") {
             setLeftFinger1Value(response.data);
           } else if (templateType === "Left Index Finger") {

@@ -83,7 +83,7 @@ const useStyles = makeStyles((theme) => ({
 const BiometricRecapture = (props) => {
   const classes = useStyles();
   let history = useHistory();
-  //console.log(history.location.state);
+ 
   const permissions =
     history.location && history.location.state
       ? history.location.state.permissions
@@ -129,7 +129,7 @@ const BiometricRecapture = (props) => {
   const [isNewStatus, setIsNewStatus] = useState(false);
 
   const calculate_age = (dob) => {
-    //console.log(dob);
+
     const today = new Date();
     const dateParts = dob.split("-");
     const birthDate = new Date(dob);
@@ -158,7 +158,7 @@ const BiometricRecapture = (props) => {
             _.map(response.data, "templateType")
           );
 
-          //console.log(personCapturedFingers);
+     
           //setSelectedFingers(personCapturedFingers);
 
           let biometricItems = _.map(fingersCodeset.data, (item) => {
@@ -177,8 +177,7 @@ const BiometricRecapture = (props) => {
         }
       })
       .catch(async (error) => {
-        console.log("getPersonBiometrics error");
-        console.log(error);
+   
 
         let biometricItems = _.map(fingersCodeset.data, (item) => {
           return _.extend({}, item, { captured: false });
@@ -196,11 +195,10 @@ const BiometricRecapture = (props) => {
         { headers: { Authorization: `Bearer ${token}` } }
       )
       .then((response) => {
-        //console.log("cleared store");
+       
       })
       .catch((error) => {
-        //console.log("cleared store error");
-        console.log(error);
+       
       });
   };
 
@@ -210,7 +208,7 @@ const BiometricRecapture = (props) => {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((response) => {
-        //console.log(response.data);
+      
         setRecapturedFingered(response.data);
       });
   };
@@ -234,12 +232,12 @@ const BiometricRecapture = (props) => {
               headers: { Authorization: `Bearer ${token}` },
             })
             .then((response) => {
-              //console.log(response.data.find((x) => x.active === true));
+           
               setDevices(response.data.find((x) => x.active === true));
               setbiometricDevices(response.data);
             })
             .catch((error) => {
-              console.log(error);
+              console.error(error);
             });
         }
       })
@@ -471,7 +469,7 @@ const BiometricRecapture = (props) => {
               headers: { Authorization: `Bearer ${token}` },
             })
             .then((response) => {
-              console.log("saved", response);
+          
               toast.success("Biometric saved successfully", {
                 position: toast.POSITION.BOTTOM_CENTER,
               });
@@ -485,7 +483,7 @@ const BiometricRecapture = (props) => {
               toast.error("Something went wrong saving biometrics recapture", {
                 position: toast.POSITION.BOTTOM_CENTER,
               });
-              console.log(error + "1");
+              console.error(error + "1");
             });
         }
       } else {
@@ -494,7 +492,7 @@ const BiometricRecapture = (props) => {
             headers: { Authorization: `Bearer ${token}` },
           })
           .then((response) => {
-            //console.log("saved", response);
+           
             toast.success("Biometric recaptured successfully", {
               position: toast.POSITION.BOTTOM_CENTER,
             });
@@ -508,7 +506,7 @@ const BiometricRecapture = (props) => {
             toast.error("Something went wrong saving biometrics recapture", {
               position: toast.POSITION.BOTTOM_CENTER,
             });
-            console.log(error + "2");
+            console.error(error + "2");
           });
       }
     } else {
@@ -540,7 +538,7 @@ const BiometricRecapture = (props) => {
         toast.error("Something went wrong", {
           position: toast.POSITION.BOTTOM_CENTER,
         });
-        console.log(error);
+        console.error(error);
       });
   };
 

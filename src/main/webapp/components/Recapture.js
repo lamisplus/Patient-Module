@@ -127,7 +127,7 @@ const Recapture = (props) => {
   const [isNewStatus, setIsNewStatus] = useState(false);
 
   const calculate_age = (dob) => {
-    console.log(dob);
+  
     const today = new Date();
     const dateParts = dob.split("-");
     const birthDate = new Date(dob);
@@ -175,8 +175,8 @@ const Recapture = (props) => {
         }
       })
       .catch(async (error) => {
-        console.log("getPersonBiometrics error");
-        console.log(error);
+      
+        console.error(error);
 
         let biometricItems = _.map(fingersCodeset.data, (item) => {
           return _.extend({}, item, { captured: false });
@@ -198,7 +198,7 @@ const Recapture = (props) => {
       })
       .catch((error) => {
         //console.log("cleared store error");
-        console.log(error);
+        console.error(error);
       });
   };
 
@@ -237,7 +237,7 @@ const Recapture = (props) => {
               setbiometricDevices(response.data);
             })
             .catch((error) => {
-              console.log(error);
+              console.error(error);
             });
         }
       })
@@ -478,7 +478,7 @@ const Recapture = (props) => {
               headers: { Authorization: `Bearer ${token}` },
             })
             .then((response) => {
-              console.log("saved", response);
+             
               toast.success("Biometric saved successfully", {
                 position: toast.POSITION.BOTTOM_CENTER,
               });
@@ -492,7 +492,7 @@ const Recapture = (props) => {
               toast.error("Something went wrong saving biometrics recapture", {
                 position: toast.POSITION.BOTTOM_CENTER,
               });
-              console.log(error + "1");
+              console.error(error + "1");
             });
         }
       } else {
@@ -501,7 +501,7 @@ const Recapture = (props) => {
             headers: { Authorization: `Bearer ${token}` },
           })
           .then((response) => {
-            //console.log("saved", response);
+            
             toast.success("Biometric recaptured successfully", {
               position: toast.POSITION.BOTTOM_CENTER,
             });
@@ -515,7 +515,7 @@ const Recapture = (props) => {
             toast.error("Something went wrong saving biometrics recapture", {
               position: toast.POSITION.BOTTOM_CENTER,
             });
-            console.log(error + "2");
+            console.error(error + "2");
           });
       }
     } else {
@@ -547,7 +547,7 @@ const Recapture = (props) => {
         toast.error("Something went wrong", {
           position: toast.POSITION.BOTTOM_CENTER,
         });
-        console.log(error);
+        console.error(error);
       });
   };
 

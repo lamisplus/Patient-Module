@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd">
+
+    <changeSet failOnError="true" author="Basil" id="20250523-001">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="patient_encounter"/>
+            <columnExists tableName="patient_encounter" columnName="status"/>
+        </preConditions>
+        <sql>
+            UPDATE patient_encounter
+            SET status = 'COMPLETED'
+            WHERE status = 'PENDING'
+              AND encounter_date BETWEEN '1901-01-01' AND '2025-05-31'
+        </sql>
+    </changeSet>
+
+    <changeSet failOnError="true" author="Basil" id="20250523-002">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="patient_visit"/>
+            <columnExists tableName="patient_visit" columnName="visit_end_date"/>
+        </preConditions>
+        <sql>
+            UPDATE patient_visit
+            SET visit_end_date = visit_start_date
+            WHERE visit_end_date IS NULL
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

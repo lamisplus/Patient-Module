@@ -19,23 +19,26 @@ import org.lamisplus.modules.patient.repository.PersonRepository;
 import org.lamisplus.modules.patient.repository.VisitRepository;
 import org.lamisplus.modules.patient.utility.LocalDateConverter;
 import org.springframework.beans.BeanUtils;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.Convert;
+import javax.transaction.Transactional;
 //import javax.validation.constraints.PastOrPresent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class VisitService {
+
+    public static final String PATIENT_CHECK_PROGRESS_TOPIC = "/topic/checking-in-out-process";
+
+    private final SimpMessageSendingOperations messagingTemplate;
     private final PersonRepository personRepository;
     private final VisitRepository visitRepository;
 
@@ -45,17 +48,18 @@ public class VisitService {
 
     private final UserService userService;
 
-
-    public Visit createVisit(VisitRequest visitDto) {
+    public Visit createVisit(VisitRequest visitDto, String serviceCode) {
         String checkInDate = visitDto.getCheckInDate();
+
         Person person = personRepository
                 .findById(visitDto.getPersonId())
                 .orElseThrow(() -> new EntityNotFoundException(VisitService.class, "errorMessage", "No patient found with id " + visitDto.getPersonId()));
 
-        Optional<Visit> currentVisit = visitRepository.findVisitByPersonAndVisitStartDateNotNullAndVisitEndDateIsNull(person);
+        Optional<Visit> currentVisit = visitRepository.findVisitByPersonAndVisitStartDateNotNullAndVisitEndDateIsNullAndServiceCode(person, serviceCode);
         if (currentVisit.isPresent())
             throw new RecordExistException(VisitService.class, "errorMessage", "Visit Already exist for this patient " + person.getId());
-        Visit visit = convertDtoToEntityVisit(visitDto);
+
+        Visit visit = convertDtoToEntityVisit(visitDto, serviceCode);
         visit.setUuid(UUID.randomUUID().toString());
         visit.setArchived(0);
         if (checkInDate != null) {
@@ -72,6 +76,34 @@ public class VisitService {
         return visitRepository.save(visit);
     }
 
+//    public Visit createVisit(VisitRequest visitDto) {
+//        String checkInDate = visitDto.getCheckInDate();
+//        System.out.println("Here are the dtos " + visitDto.getServiceCode());
+////        visitDto.getServiceCode().forEach(s -> System.out.println("Here are the dtos1"));
+//        Person person = personRepository
+//                .findById(visitDto.getPersonId())
+//                .orElseThrow(() -> new EntityNotFoundException(VisitService.class, "errorMessage", "No patient found with id " + visitDto.getPersonId()));
+//
+//        Optional<Visit> currentVisit = visitRepository.findVisitByPersonAndVisitStartDateNotNullAndVisitEndDateIsNullAndServiceCode(person, visitDto.getServiceCode().toString());
+//        if (currentVisit.isPresent())
+//            throw new RecordExistException(VisitService.class, "errorMessage", "Visit Already exist for this patient " + person.getId());
+//        Visit visit = convertDtoToEntityVisit(visitDto);
+//        visit.setUuid(UUID.randomUUID().toString());
+//        visit.setArchived(0);
+//        if (checkInDate != null) {
+//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+//            LocalDateTime visitStartDateTime = LocalDateTime.parse(checkInDate, formatter);
+//            visit.setVisitStartDate(visitStartDateTime);
+//        } else {
+//            LocalDateTime now = LocalDateTime.now();
+//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+//            String formatDateTime = now.format(formatter);
+//            LocalDateTime visitStartDateTime = LocalDateTime.parse(formatDateTime, formatter);
+//            visit.setVisitStartDate(visitStartDateTime);
+//        }
+//        return visitRepository.save(visit);
+//    }
+
     public VisitDto updateVisit(Long id, VisitDto visitDto) {
         Visit existVisit = getExistVisit(id);
         Visit visit = convertDtoToEntity(visitDto);
@@ -87,7 +119,50 @@ public class VisitService {
         encounters.forEach(this::checkoutFromAllService);
         visit.setVisitEndDate(LocalDateTime.now());
         visitRepository.save(visit);
+        messagingTemplate.convertAndSend(PATIENT_CHECK_PROGRESS_TOPIC, "Client checked out of service");
+
     }
+
+
+    public List<Encounter> getPendingEncounterByStatus() {
+        log.info("Fetching pending encounters...");
+        List<Encounter> pendingEncounters = encounterRepository.findEncounterByStatus("PENDING");
+        log.info("Number of pending encounters: " + pendingEncounters.size());
+
+        pendingEncounters.forEach(encounter -> {
+            log.info("Processing encounter with UUID: " + encounter.getUuid());
+            idleCheckout(encounter);
+        });
+
+        return pendingEncounters;
+    }
+
+    @Transactional
+    public void idleCheckout(Encounter encounter) {
+        System.out.println("Got into Idle Checkout *******************");
+        LocalDateTime encounterDate = encounter.getEncounterDate();
+        LocalDateTime expiredDate = encounterDate.plusDays(1);
+        System.out.println("Expired Date: " + expiredDate + " Encounter Date: " + encounterDate);
+
+        if (LocalDateTime.now().isAfter(expiredDate)) {
+            log.info("Checking out encounter: " + encounter.getVisit().getUuid());
+
+            // Update the status of the encounter
+            encounter.setStatus("CHECKED-OUT");
+            encounter.setLastModifiedDate(LocalDateTime.now());
+            encounter.setLastModifiedBy("auto-checkout");
+
+            try {
+                encounterRepository.save(encounter);
+                log.info("Successfully updated encounter with UUID: " + encounter.getUuid());
+            } catch (Exception e) {
+                log.error("Error updating encounter: ", e);
+            }
+        } else {
+            log.info("Encounter with UUID: " + encounter.getUuid() + " is not expired yet.");
+        }
+    }
+
 
     private void checkoutFromAllService(Encounter encounter) {
         if (encounter.getStatus().equals("PENDING")) {
@@ -121,24 +196,43 @@ public class VisitService {
         visitRepository.save(existVisit);
     }
 
+    public boolean isPatientHivPositive(String personId){
+        return personRepository.isPatientHivPositive(personId);
+    }
+
     public VisitDto checkInPerson(CheckInDto checkInDto) {
+        Visit visit = null;
+        Visit visit1 = null;
         Long personId = checkInDto.getVisitDto().getPersonId();
-        Person person = personRepository
-                .findById(personId)
-                .orElseThrow(() -> new EntityNotFoundException(VisitService.class, "errorMessage", "No patient found with id " + checkInDto.getVisitDto().getPersonId()));
-        Visit visit1 = createVisit(checkInDto.getVisitDto());
-        Visit visit = getExistVisit(visit1.getId());
-        checkInDto.getServiceIds().forEach(checkInDto1 -> {
-                    Optional<PatientCheckPostService> patientCheckPostService =
-                            this.patientCheckPostServiceRepository.findById(checkInDto1);
-                    if (patientCheckPostService.isPresent()) {
-                        PatientCheckPostService patientCheckPostService1 = patientCheckPostService.get();
-                        createEncounter(person, visit, patientCheckPostService1.getModuleServiceCode());
-                    }
+        // Fetch the person details
+        Person person = personRepository.findById(personId)
+                .orElseThrow(() -> {
+                    String errorMessage = "No patient found with id " + personId;
+                    messagingTemplate.convertAndSend(PATIENT_CHECK_PROGRESS_TOPIC, errorMessage);
+                    return new EntityNotFoundException(VisitService.class, "errorMessage", errorMessage);
+                });
+        // Process each service ID
+        for (Long serviceId : checkInDto.getServiceIds()) {
+            Optional<PatientCheckPostService> patientCheckPostService = patientCheckPostServiceRepository.findById(serviceId);
+
+            if (patientCheckPostService.isPresent()) {
+                PatientCheckPostService patientCheckPostService1 = patientCheckPostService.get();
+                if (patientCheckPostService1.getModuleServiceCode().toLowerCase().contains("prep") && isPatientHivPositive(String.valueOf(personId))) {
+                    String errorMessage = "HIV positive patients are not eligible for PrEP services.";
+                    throw new IllegalArgumentException(errorMessage);
                 }
-
-        );
-
+                visit1 = createVisit(checkInDto.getVisitDto(), patientCheckPostService1.getModuleServiceCode());
+                visit = getExistVisit(visit1.getId());
+                // Create encounter
+                createEncounter(person, visit, patientCheckPostService1.getModuleServiceCode());
+                messagingTemplate.convertAndSend(PATIENT_CHECK_PROGRESS_TOPIC,
+                        "Client Checked: " + person.getHospitalNumber() + " into " + patientCheckPostService1.getModuleServiceName());
+            } else {
+                // Notify about missing service
+                messagingTemplate.convertAndSend(PATIENT_CHECK_PROGRESS_TOPIC,
+                        "Service ID not found: " + serviceId + " for personId: " + personId);
+            }
+        }
         return convertEntityToDto(visit);
     }
 
@@ -222,7 +316,7 @@ public class VisitService {
         return visit;
     }
 
-    private Visit convertDtoToEntityVisit(VisitRequest visitDto) {
+    private Visit convertDtoToEntityVisit(VisitRequest visitDto, String serviceCode) {
         Person person = personRepository
                 .findById(visitDto.getPersonId())
                 .orElseThrow(() -> new EntityNotFoundException(VisitService.class, "errorMessage", "No patient found with id " + visitDto.getPersonId()));
@@ -231,6 +325,7 @@ public class VisitService {
         log.info("facilityId {}", person.getFacilityId());
         visit.setFacilityId(person.getFacilityId());
         visit.setPerson(person);
+        visit.setServiceCode(serviceCode);
         return visit;
     }
 
@@ -242,6 +337,11 @@ public class VisitService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         String checkInDate = visit.getVisitStartDate().format(formatter);
         visitDto.setCheckInDate(checkInDate);
+//        visitDto.setServiceCode(Collections.singleton("serviceCoderher"));
+
+//        Set<String> serviceCodes = new HashSet<>();
+//        serviceCodes.add(visit.getServiceCode());
+////        visitDto.setServiceCode(serviceCodes);
 
         if (visit.getVisitEndDate() != null) {
             String checkOutDate = visit.getVisitEndDate().format(formatter);

@@ -184,6 +184,8 @@ const CheckedInPatients = (props) => {
       },
     ];
   }
+  const [isTabIndexToggled, setIsTabIndexToggled] = useState(true);
+
   const handleRemoteData = (query) =>
     new Promise((resolve, reject) => {
       axios

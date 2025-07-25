@@ -26,7 +26,7 @@ export const fetchAll = (onSuccess, onError) => dispatch => {
   axios
     .get(`${baseUrl}patients?size=200`)
     .then(response => {
-      console.log(response.data);
+    
       if(onSuccess){
         onSuccess();
       }
@@ -103,7 +103,6 @@ export const create = (data,onSuccess, onError) => dispatch => {
 
 export const update = (data, id, onSuccess, onError) => dispatch => {
 
-  console.log(`${baseUrl}patients/${id}`);
     axios
     .put(`${baseUrl}patients/${id}`, data)
     .then(response => {
@@ -120,21 +119,20 @@ export const update = (data, id, onSuccess, onError) => dispatch => {
         type: ACTION_TYPES.PATIENTS_ERROR,
         payload:error.response.data
       });
-      console.log(error.response.data)
       onError()
       if(error.response.data.apierror.message===null || error.response.data.apierror.message===""){
         toast.error("Something went wrong");
       }else{
         toast.error(error.response.data.apierror.message);
       }
-     //console.log(error.response.data.apierror.message);
+
     });
 
 
 };
 
 export const Delete = (id, onSuccess, onError) => dispatch => {
-//  console.log(`${baseUrl}patients/${id}`);
+
   axios
   .delete(`${baseUrl}patients/${id}`)
   .then(response => {
@@ -149,7 +147,7 @@ export const Delete = (id, onSuccess, onError) => dispatch => {
     toast.success("Patient record was deleted successfully!");
   })
   .catch(error => {
-    //console.log(error.response.data)
+   
       if(onError){
           onError();
       }
@@ -158,7 +156,7 @@ export const Delete = (id, onSuccess, onError) => dispatch => {
     }else{
       toast.error(error.response.data.apierror.message);
     }
-   //console.log(error.response.data.apierror.message);
+  
   });
 };
 
@@ -287,7 +285,7 @@ export const fetchPatientVitalSigns = (id, onSuccess, onError) => dispatch => {
  }
 
  export const fetchByHospitalNumber = (id, onSuccess, onError) => dispatch => {
-    console.log(id);
+
     if(id) {
         axios
             .get(`${baseUrl}patients/hospitalNumber?hospitalNumber=${id}`)
