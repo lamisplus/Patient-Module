@@ -366,14 +366,14 @@ function Index(props) {
             </Tab.Pane>
           ) : null,
       },
-      {
-        menuItem: "Encounters",
-        render: () => (
-          <Tab.Pane>
-            <p>No Lab or Pharmacy Enccounters For This Patient</p>
-          </Tab.Pane>
-        ),
-      },
+      // {
+      //   menuItem: "Encounters",
+      //   render: () => (
+      //     <Tab.Pane>
+      //       <p>No Lab or Pharmacy Enccounters For This Patient</p>
+      //     </Tab.Pane>
+      //   ),
+      // },
     ],
     [
       columns,

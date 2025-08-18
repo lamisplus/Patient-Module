@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, memo, useState } from "react";
 import { Link, useHistory } from "react-router-dom";
 import MatButton from "@material-ui/core/Button";
 import { TiArrowBack } from "react-icons/ti";
@@ -21,6 +21,8 @@ import { makeStyles } from "@material-ui/core/styles";
 import moment from "moment";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import RecallPatient from "../../RecallPatient";
+import useRoles from "../../../hooks/useRoles";
+
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -102,6 +104,17 @@ const useStyles = makeStyles((theme) => ({
 }));
 let newDate = new Date();
 function Index(props) {
+    const { hasRole, loading: rolesLoading } = useRoles();
+    const isRDE = hasRole("RDE");
+    const permissions = useMemo(
+    () => ({
+      canSeeCheckedInPatients: !isRDE, // POC users see this
+      // canSeeFindPatients: isRDE, // RDE users see this
+      // canSeeArtPatients: isRDE, // RDE users see this
+      // canSeeOvcLinkage: isRDE, // RDE users see this
+    }),
+    [isRDE]
+  );
   const [patientDetails, setPatientDetails] = useState(null);
   const [pimsEnrollment, setPimsEnrollment] = useState([]);
   const [enablePPI, setEnablePPI] = useState(true);
@@ -410,25 +423,29 @@ function Index(props) {
             </MatButton>
           </Link>
 
-          {permissionsSet.has("patient_check_in") ||
-          permissionsSet.has("all_permission") ? (
-            <Button
-              variant="contained"
-              style={{
-                backgroundColor: checkinStatus ? "#ccc" : "rgb(4, 196, 217)",
-                fontSize: "14PX",
-                fontWeight: "bold",
-                height: "35px",
-              }}
-              onClick={handleCheckIn}
-              className="float-right mr-1"
-              disabled={checkinStatus}
-            >
-              <span style={{ textTransform: "capitalize" }}>
-                {checkinStatus ? "Already Checked In" : "Check In"}
-              </span>
-            </Button>
-          ) : null}
+
+          {permissions.canSeeCheckedInPatients && (
+            (permissionsSet.has("patient_check_in") ||
+            permissionsSet.has("all_permission")) ? (
+              <Button
+                variant="contained"
+                style={{
+                  backgroundColor: checkinStatus ? "#ccc" : "rgb(4, 196, 217)",
+                  fontSize: "14PX",
+                  fontWeight: "bold",
+                  height: "35px",
+                }}
+                onClick={handleCheckIn}
+                className="float-right mr-1"
+                disabled={checkinStatus}
+              >
+                <span style={{ textTransform: "capitalize" }}>
+                  {checkinStatus ? "Already Checked In" : "Check In"}
+                </span>
+              </Button>
+            ) : null
+          )}
+
 
           {/* {checkinStatus === true ? (
             <Button
