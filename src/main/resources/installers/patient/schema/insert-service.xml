@@ -5,20 +5,20 @@
         xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd">
 
-    <changeSet failOnError="false" author="Aniwange Amos" id="20222005-017">
-        <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*)
-                FROM patient_check_post_service
-                WHERE id = 1;
-            </sqlCheck>
-        </preConditions>
-        <sqlFile dbms="postgresql"
-                 path="sql/patient_post_service_query.sql"
-                 relativeToChangelogFile="true"
-                 splitStatements="false"
-                 stripComments="true"/>
-    </changeSet>
+<!--    <changeSet failOnError="false" author="Aniwange Amos" id="20222005-017">-->
+<!--        <preConditions onFail="MARK_RAN">-->
+<!--            <sqlCheck expectedResult="0">-->
+<!--                SELECT COUNT(*)-->
+<!--                FROM patient_check_post_service-->
+<!--                WHERE id = 1;-->
+<!--            </sqlCheck>-->
+<!--        </preConditions>-->
+<!--        <sqlFile dbms="postgresql"-->
+<!--                 path="sql/patient_post_service_query.sql"-->
+<!--                 relativeToChangelogFile="true"-->
+<!--                 splitStatements="false"-->
+<!--                 stripComments="true"/>-->
+<!--    </changeSet>-->
 
     <changeSet failOnError="true" author="Ajor Victor" id="20231130-001">
         <preConditions onFail="MARK_RAN">

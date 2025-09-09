@@ -142,18 +142,26 @@ function BiometricsList(props) {
 
   function actionItems(row) {
     return [
-      {
-        ...(permissions.includes("view_patient") ||
-          (permissions.includes("all_permission") && {
-            name: "Capture",
-            type: "link",
-            icon: <MdFingerprint size="22" />,
-            to: {
-              pathname: "/patient-dashboard",
-              state: { patientObj: row, permissions: permissions },
-            },
-          })),
-      },
+      ...(permissions.includes("view_patient") ||
+      permissions.includes("all_permission") ? [{
+        name: "Capture",
+        type: "link",
+        icon: <MdFingerprint size="22" />,
+        to: {
+          pathname: "/patient-dashboard",
+          state: { patientObj: row, permissions: permissions },
+        },
+      }] : []),
+      ...(permissions.includes("view_patient") ||
+      permissions.includes("all_permission") ? [{
+        name: "View",
+        type: "link",
+        icon: <FaEye size="22" />,
+        to: {
+          pathname: "/patient-dashboard",
+          state: { patientObj: row, permissions: permissions },
+        },
+      }] : []),
     ];
   }
 

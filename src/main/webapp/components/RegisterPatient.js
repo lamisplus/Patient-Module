@@ -145,6 +145,11 @@ const RegisterPatient = (props) => {
     sexId: "",
     ninNumber: "",
   });
+  
+  // Debug: Log basicInfo whenever it changes
+  useEffect(() => {
+    console.log("🔄 basicInfo state updated:", basicInfo);
+  }, [basicInfo]);
   const [relatives, setRelatives] = useState({
     address: "",
     phone: "",
@@ -183,6 +188,7 @@ const RegisterPatient = (props) => {
   });
   const userDetail =
     props.location && props.location.state ? props.location.state.user : null;
+
   const classes = useStyles();
   const history = useHistory();
   const location = useLocation();
@@ -210,7 +216,7 @@ const RegisterPatient = (props) => {
   };
 
   const getPatient = useCallback(async () => {
-    if (patientId) {
+    if (patientId && getOptions("SEX").length > 0) {
       const response = await axios.get(`${baseUrl}patient/${patientId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -246,44 +252,59 @@ const RegisterPatient = (props) => {
           ? address.address[0]
           : null;
 
-      if (country.stateId) {
+      if (country && country.stateId) {
         loadState(country.stateId);
       }
 
-      setBasicInfo({
+      const basicInfoData = {
         active: true,
-        streetAddress: country.city,
+        streetAddress: country?.city || "",
         address: [],
         contact: [],
         contactPoint: [],
         dateOfBirth: "",
         deceased: false,
         deceasedDateTime: null,
-        hospitalNumber: hospitalNumber.value,
-        firstName: patient.firstName,
-        lastName: patient.surname,
+        hospitalNumber: hospitalNumber?.value || "",
+        firstName: patient.firstName || "",
+        lastName: patient.surname || "",
         genderId: "",
         identifier: "",
-        otherName: "",
-        maritalStatusId: patient.maritalStatus?.id,
-        educationId: patient.education?.id,
-        employmentStatusId: patient.employmentStatus?.id,
-        dateOfRegistration: patient.dateOfRegistration,
+        otherName: patient.otherName || "",
+        maritalStatusId: patient.maritalStatus?.id || "",
+        educationId: patient.education?.id || "",
+        employmentStatusId: patient.employmentStatus?.id || "",
+        dateOfRegistration: patient.dateOfRegistration || "",
         isDateOfBirthEstimated: patient.dateOfBirth == "Actual" ? false : true,
         age: calculate_age(patient.dateOfBirth),
-        phoneNumber: phone?.value,
-        altPhonenumber: altphone?.value,
-        dob: patient.dateOfBirth,
+        phoneNumber: phone?.value || "",
+        altPhonenumber: altphone?.value || "",
+        dob: patient.dateOfBirth || "",
         countryId: 1,
-        stateId: country.stateId,
-        district: parseInt(country.district),
-        landmark: country.line[0],
-        sexId: sex,
+        stateId: country?.stateId || "",
+        district: country?.district ? parseInt(country.district) : "",
+        landmark: country?.line?.[0] || "",
+        sexId: sex || "",
         ninNumber: "",
-        email: email?.value,
-      });
+        email: email?.value || "",
+      };
+      
+      console.log("=== PATIENT DATA DEBUG ===");
+      console.log("Original patient:", patient);
+      console.log("Hospital Number:", hospitalNumber);
+      console.log("Sex options:", sexOptions);
+      console.log("Selected sex ID:", sex);
+      console.log("Phone:", phone);
+      console.log("Email:", email);
+      console.log("Alt phone:", altphone);
+      console.log("Country data:", country);
+      console.log("Final basicInfo being set:", basicInfoData);
+      console.log("=== END DEBUG ===");
+      
+      setBasicInfo(basicInfoData);
+      console.log("✅ setBasicInfo called with data:", basicInfoData);
     }
-  }, [getOptions]);
+  }, [patientId, getOptions]);
 
   useEffect(() => {
     loadTopLevelCountry();
@@ -293,7 +314,7 @@ const RegisterPatient = (props) => {
     if (basicInfo.dateOfRegistration < basicInfo.dob) {
       toast.error("Date of registration can not be earlier than date of birth");
     }
-  }, [getPatient]);
+  }, [patientId, getPatient]);
 
   const loadTopLevelCountry = useCallback(async () => {
     const response = await axios.get(
@@ -554,9 +575,9 @@ const RegisterPatient = (props) => {
   const validate = () => {
     let temp = { ...errors };
     temp.firstName = basicInfo.firstName ? "" : "First Name is required";
-    temp.hospitalNumber = basicInfo.hospitalNumber
+    temp.hospitalNumber = basicInfo.hospitalNumber 
       ? ""
-      : "Hospital Number  is required.";
+      : "Hospital Number  is required." 
     //temp.middleName = basicInfo.middleName ? "" : "Middle is required."
 
     temp.lastName = basicInfo.lastName ? "" : "Last Name  is required.";
@@ -1793,7 +1814,7 @@ const RegisterPatient = (props) => {
                 startIcon={<SaveIcon />}
                 onClick={handleSubmit}
                 hidden={disabledAgeBaseOnAge}
-                disabled={saving}
+                disabled={saving ||   hospitalNumStatus2 === false}
                 style={{ backgroundColor: "#014d88", fontWeight: "bolder" }}
                 id="save-patient"
               >

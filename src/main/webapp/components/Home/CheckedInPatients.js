@@ -146,42 +146,36 @@ const CheckedInPatients = (props) => {
           state: { patientId: row.id, permissions: permissions },
         },
       },
-      {
-        ...(permissions.includes("view_patient") ||
-          (permissions.includes("all_permission") && {
-            name: "Dashboard",
-            type: "link",
-            icon: <MdPerson size="20" color="rgb(4, 196, 217)" />,
-            to: {
-              pathname: "/patient-dashboard",
-              state: { patientObj: row, permissions: permissions },
-            },
-          })),
-      },
-      {
-        ...(permissions.includes("edit_patient") ||
-          (permissions.includes("all_permission") && {
-            name: "Edit",
-            type: "link",
-            icon: <MdModeEdit size="20" color="rgb(4, 196, 217)" />,
-            to: {
-              pathname: "/register-patient",
-              state: { patientId: row.id, permissions: permissions },
-            },
-          })),
-      },
-      {
-        ...(permissions.includes("delete_patient") ||
-          (permissions.includes("all_permission") && {
-            name: "Delete",
-            type: "link",
-            icon: <MdDeleteForever size="20" color="rgb(4, 196, 217)" />,
-            to: {
-              pathname: "/#",
-              state: { patientObj: row, permissions: permissions },
-            },
-          })),
-      },
+      ...(permissions.includes("view_patient") ||
+      permissions.includes("all_permission") ? [{
+        name: "Dashboard",
+        type: "link",
+        icon: <MdPerson size="20" color="rgb(4, 196, 217)" />,
+        to: {
+          pathname: "/patient-dashboard",
+          state: { patientObj: row, permissions: permissions },
+        },
+      }] : []),
+      ...(permissions.includes("edit_patient") ||
+      permissions.includes("all_permission") ? [{
+        name: "Edit",
+        type: "link",
+        icon: <MdModeEdit size="20" color="rgb(4, 196, 217)" />,
+        to: {
+          pathname: "/register-patient",
+          state: { patientId: row.id, permissions: permissions },
+        },
+      }] : []),
+      ...(permissions.includes("delete_patient") ||
+      permissions.includes("all_permission") ? [{
+        name: "Delete",
+        type: "link",
+        icon: <MdDeleteForever size="20" color="rgb(4, 196, 217)" />,
+        to: {
+          pathname: "/#",
+          state: { patientObj: row, permissions: permissions },
+        },
+      }] : []),
     ];
   }
   const [isTabIndexToggled, setIsTabIndexToggled] = useState(true);

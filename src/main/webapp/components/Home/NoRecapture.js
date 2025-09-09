@@ -139,27 +139,26 @@ function NoRecapture(props) {
 
   function actionItems(row) {
     return [
-      //   {
-      //     name: "View",
-      //     type: "link",
-      //     icon: <FaEye size="22" />,
-      //     to: {
-      //       pathname: "/patient-biometrics",
-      //       state: { patientObj: row, permissions: permissions },
-      //     },
-      //   },
-      {
-        ...(permissions.includes("view_patient") ||
-          (permissions.includes("all_permission") && {
-            name: "Capture",
-            type: "link",
-            icon: <MdFingerprint size="22" />,
-            to: {
-              pathname: "/patient-biometrics",
-              state: { patientObj: row, permissions: permissions },
-            },
-          })),
-      },
+      ...(permissions.includes("view_patient") ||
+      permissions.includes("all_permission") ? [{
+        name: "Capture",
+        type: "link",
+        icon: <MdFingerprint size="22" />,
+        to: {
+          pathname: "/patient-biometrics",
+          state: { patientObj: row, permissions: permissions },
+        },
+      }] : []),
+      ...(permissions.includes("view_patient") ||
+      permissions.includes("all_permission") ? [{
+        name: "View",
+        type: "link",
+        icon: <FaEye size="22" />,
+        to: {
+          pathname: "/patient-dashboard",
+          state: { patientObj: row, permissions: permissions },
+        },
+      }] : []),
     ];
   }
 
@@ -191,7 +190,12 @@ function NoRecapture(props) {
                   : calculateAge(row.dateOfBirth),
               actions: (
                 <div>
-                  <SplitActionButton actions={actionItems(row)} />
+                  {permissions.includes("view_patient") ||
+                  permissions.includes("all_permission") ? (
+                    <SplitActionButton actions={actionItems(row)} />
+                  ) : (
+                    ""
+                  )}
                 </div>
               ),
             })),

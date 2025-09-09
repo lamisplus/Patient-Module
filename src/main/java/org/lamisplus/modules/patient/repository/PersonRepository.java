@@ -458,165 +458,230 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     List<Object[]> countRegistrationsByYearAndSex();
 
 
-    @Query(value = "WITH base_patient AS (   \n" +
-            "                           SELECT    \n" +
-            "                               p.id, p.created_by, p.date_of_registration,    \n" +
-            "                               p.first_name, p.surname, p.other_name,    \n" +
-            "                               p.hospital_number, p.date_of_birth,    \n" +
-            "                               p.is_date_of_birth_estimated, p.sex,    \n" +
-            "                               p.facility_id, p.uuid, p.contact_point, p.address, p.contact   \n" +
-            "                           FROM patient_person p   \n" +
-            "                           WHERE p.archived = 0   \n" +
-            "                       ),   \n" +
-            "                       consultation_patients AS (   \n" +
-            "                           SELECT DISTINCT pe.person_uuid\n" +
-            "                           FROM patient_encounter pe   \n" +
-            "                           JOIN patient_visit v ON v.uuid = pe.visit_id   \n" +
-            "                           WHERE pe.service_code = ?1 AND pe.status = 'PENDING' \n" +
-            "                       ),   \n" +
-            "                     \n" +
-            "                       relevant_visits AS (   \n" +
-            "                           SELECT \n" +
-            "                               pe.person_uuid, \n" +
-            "                               v.id AS visit_id, \n" +
-            "                               pe.created_date AS checkin_date,\n" +
-            "                               ROW_NUMBER() OVER (\n" +
-            "                                   PARTITION BY pe.person_uuid \n" +
-            "                                   ORDER BY pe.created_date DESC, v.id DESC\n" +
-            "                               ) as rn\n" +
-            "                           FROM patient_encounter pe   \n" +
-            "                           JOIN patient_visit v ON v.uuid = pe.visit_id   \n" +
-            "                           WHERE pe.service_code = ?1 AND pe.status = 'PENDING' \n" +
-            "                       ),   \n" +
-            "                       latest_visit_per_patient AS (\n" +
-            "                           SELECT person_uuid, visit_id, checkin_date\n" +
-            "                           FROM relevant_visits \n" +
-            "                           WHERE rn = 1\n" +
-            "                       ),\n" +
-            "                       hiv_art_status AS (   \n" +
-            "                           SELECT DISTINCT person_uuid, TRUE AS commenced   \n" +
-            "                           FROM hiv_art_clinical   \n" +
-            "                           WHERE archived = 0 AND is_commencement IS TRUE   \n" +
-            "                       ),   \n" +
-            "                       clinical_eval AS (   \n" +
-            "                           SELECT DISTINCT person_uuid, TRUE AS has_eval   \n" +
-            "                           FROM hiv_observation   \n" +
-            "                           WHERE type = 'Clinical evaluation' AND archived = 0   \n" +
-            "                       ),   \n" +
-            "                       mental_health AS (   \n" +
-            "                           SELECT DISTINCT person_uuid, TRUE AS has_mental_health   \n" +
-            "                           FROM hiv_observation   \n" +
-            "                           WHERE type = 'Mental health' AND archived = 0   \n" +
-            "                       ),  \n" +
-            "                       biometric AS(  \n" +
-            "                           SELECT DISTINCT person_uuid, TRUE AS biometricstatus  \n" +
-            "                           FROM biometric   \n" +
-            "                           WHERE person_uuid IS NOT NULL AND archived = 0  \n" +
-            "                       )  \n" +
-            "                       SELECT DISTINCT ON (p.id)  -- FINAL safety net for patient ID duplicates\n" +
-            "                           p.id,   \n" +
-            "                           p.created_by AS createby,   \n" +
-            "                           p.date_of_registration AS dateofregistration,   \n" +
-            "                           p.first_name AS firstname,   \n" +
-            "                           p.surname AS surname,   \n" +
-            "                           p.other_name AS othername,   \n" +
-            "                           CASE    \n" +
-            "                               WHEN p.other_name IS NULL OR p.other_name = ''    \n" +
-            "                               THEN p.first_name || ' ' || p.surname   \n" +
-            "                               ELSE p.first_name || ' ' || p.other_name || ' ' || p.surname   \n" +
-            "                           END AS fullname,   \n" +
-            "                           p.hospital_number AS hospitalnumber,   \n" +
-            "                           CAST(EXTRACT(YEAR FROM AGE(CURRENT_DATE, p.date_of_birth)) AS INTEGER) AS age,   \n" +
-            "                           INITCAP(p.sex) AS sex,   \n" +
-            "                           p.date_of_birth AS dateofbirth,   \n" +
-            "                           p.is_date_of_birth_estimated AS isdobestimated,   \n" +
-            "                           p.facility_id AS facilityid,   \n" +
-            "                           p.uuid AS personuuid,   \n" +
-            "                           (pc.display IS NOT NULL) AS isenrolled,   \n" +
-            "                           e.target_group_id AS targetgroupid,   \n" +
-            "                           e.id AS enrollmentid,   \n" +
-            "                           e.unique_id AS uniqueid,   \n" +
-            "                           pc.display AS currentstatus,   \n" +
-            "                           ca.commenced,   \n" +
-            "                           rv.visit_id AS visitid, \n" +
-            "                           rv.checkin_date AS checkInDate, \n" +
-            "                           COALESCE(ce.has_eval, FALSE) AS clinicalevaluation,   \n" +
-            "                           COALESCE(mh.has_mental_health, FALSE) AS mentalhealth,  \n" +
-            "                           COALESCE(b.biometricstatus, FALSE) AS biometricstatus,   \n" +
-            "                           (pa.person_uuid IS NOT NULL) AS isOnAnc,   \n" +
-            "                           (pmt.person_uuid IS NOT NULL) AS isOnPmtct,   \n" +
-            "                           (prep.person_uuid IS NOT NULL) AS isOnPrep,   \n" +
-            "                           (hts.person_uuid IS NOT NULL) AS isOnHts,   \n" +
-            "                           (hts_rst.person_uuid IS NOT NULL) AS isOnHtsRiskStratification,   \n" +
-            "                           pmt.hiv_status AS hivStatus,   \n" +
-            "                           pa.static_hiv_status AS staticHivStatus, \n" +
-            "                        \n" +
-            "                           COALESCE( \n" +
-            "                               (p.contact -> 'contact' -> 0 -> 'contactPoint' ->> 'value'), \n" +
-            "                               (p.contact_point -> 'contactPoint' -> 0 ->> 'value'), \n" +
-            "                               (p.contact_point -> 'contactPoint' -> 1 ->> 'value') \n" +
-            "                           ) AS phoneNumber, \n" +
-            "                         \n" +
-            "                           COALESCE( \n" +
-            "                            \n" +
-            "                               CASE  \n" +
-            "                                   WHEN p.contact -> 'contact' -> 0 -> 'address' IS NOT NULL  \n" +
-            "                                   THEN TRIM(CONCAT_WS(' ', \n" +
-            "                                       \n" +
-            "                                       CASE  \n" +
-            "                                           WHEN p.contact -> 'contact' -> 0 -> 'address' -> 'line' IS NOT NULL  \n" +
-            "                                           THEN array_to_string( \n" +
-            "                                               ARRAY( \n" +
-            "                                                   SELECT value \n" +
-            "                                                   FROM jsonb_array_elements_text(p.contact -> 'contact' -> 0 -> 'address' -> 'line') AS value \n" +
-            "                                                   WHERE value IS NOT NULL AND value != '' \n" +
-            "                                               ),  \n" +
-            "                                               ' ' \n" +
-            "                                           ) \n" +
-            "                                           ELSE NULL \n" +
-            "                                       END, \n" +
-            "                                      \n" +
-            "                                       NULLIF(p.contact -> 'contact' -> 0 -> 'address' ->> 'city', '') \n" +
-            "                                   )) \n" +
-            "                                   ELSE NULL \n" +
-            "                               END, \n" +
-            "                                \n" +
-            "                               CASE  \n" +
-            "                                   WHEN p.address -> 'address' -> 0 IS NOT NULL  \n" +
-            "                                   THEN TRIM(CONCAT_WS(' ', \n" +
-            "                                        \n" +
-            "                                       CASE  \n" +
-            "                                           WHEN p.address -> 'address' -> 0 -> 'line' IS NOT NULL  \n" +
-            "                                           THEN array_to_string( \n" +
-            "                                               ARRAY( \n" +
-            "                                                   SELECT value \n" +
-            "                                                   FROM jsonb_array_elements_text(p.address -> 'address' -> 0 -> 'line') AS value \n" +
-            "                                                   WHERE value IS NOT NULL AND value != '' \n" +
-            "                                               ),  \n" +
-            "                                               ' ' \n" +
-            "                                           ) \n" +
-            "                                           ELSE NULL \n" +
-            "                                       END, \n" +
-            "                                       NULLIF(p.address -> 'address' -> 0 ->> 'city', '') \n" +
-            "                                   )) \n" +
-            "                                   ELSE NULL \n" +
-            "                               END \n" +
-            "                           ) AS address \n" +
-            "                       FROM base_patient p   \n" +
-            "                       JOIN consultation_patients cp ON cp.person_uuid = p.uuid   \n" +
-            "                       LEFT JOIN latest_visit_per_patient rv ON rv.person_uuid = p.uuid   \n" +
-            "                       LEFT JOIN hiv_enrollment e ON e.person_uuid = p.uuid   \n" +
-            "                       LEFT JOIN base_application_codeset pc ON pc.id = e.status_at_registration_id   \n" +
-            "                       LEFT JOIN hiv_art_status ca ON ca.person_uuid = p.uuid   \n" +
-            "                       LEFT JOIN clinical_eval ce ON ce.person_uuid = p.uuid   \n" +
-            "                       LEFT JOIN mental_health mh ON mh.person_uuid = p.uuid   \n" +
-            "                       LEFT JOIN biometric b ON b.person_uuid = p.uuid   \n" +
-            "                       LEFT JOIN pmtct_anc pa ON pa.person_uuid = p.uuid AND pa.archived = 0   \n" +
-            "                       LEFT JOIN pmtct_enrollment pmt ON pmt.person_uuid = p.uuid AND pmt.archived = 0   \n" +
-            "                       LEFT JOIN prep_enrollment prep ON prep.person_uuid = p.uuid AND prep.archived = 0   \n" +
-            "                       LEFT JOIN hts_client hts ON hts.person_uuid = p.uuid AND hts.archived = 0   \n" +
-            "                       LEFT JOIN hts_risk_stratification hts_rst ON hts_rst.person_uuid = p.uuid AND hts_rst.archived = 0   \n" +
-            "                       ORDER BY p.id ASC", nativeQuery = true)
+    @Query(value = "WITH base_patient AS (\n" +
+            "    SELECT\n" +
+            "        p.id,\n" +
+            "        p.created_by,\n" +
+            "        p.date_of_registration,\n" +
+            "        p.first_name,\n" +
+            "        p.surname,\n" +
+            "        p.other_name,\n" +
+            "        p.hospital_number,\n" +
+            "        p.date_of_birth,\n" +
+            "        p.is_date_of_birth_estimated,\n" +
+            "        p.sex,\n" +
+            "        p.facility_id,\n" +
+            "        p.uuid,\n" +
+            "        p.contact_point,\n" +
+            "        p.address,\n" +
+            "        p.contact\n" +
+            "    FROM\n" +
+            "        patient_person p\n" +
+            "    WHERE\n" +
+            "        p.archived = 0\n" +
+            "),\n" +
+            "consultation_patients AS (\n" +
+            "    SELECT\n" +
+            "        DISTINCT pe.person_uuid\n" +
+            "    FROM\n" +
+            "        patient_encounter pe\n" +
+            "        JOIN patient_visit v ON v.uuid = pe.visit_id\n" +
+            "    WHERE\n" +
+            "        pe.service_code = ?1\n" +
+            "        AND pe.status = 'PENDING'\n" +
+            "),\n" +
+            "latest_visit_per_patient AS (\n" +
+            "    SELECT\n" +
+            "        person_uuid,\n" +
+            "        visit_id,\n" +
+            "        checkin_date\n" +
+            "    FROM (\n" +
+            "        SELECT\n" +
+            "            pe.person_uuid,\n" +
+            "            v.id AS visit_id,\n" +
+            "            pe.created_date AS checkin_date,\n" +
+            "            ROW_NUMBER() OVER (\n" +
+            "                PARTITION BY pe.person_uuid\n" +
+            "                ORDER BY pe.created_date DESC, v.id DESC\n" +
+            "            ) as rn\n" +
+            "        FROM\n" +
+            "            patient_encounter pe\n" +
+            "            JOIN patient_visit v ON v.uuid = pe.visit_id\n" +
+            "        WHERE\n" +
+            "            pe.service_code = ?1\n" +
+            "            AND pe.status = 'PENDING'\n" +
+            "    ) ranked_visits\n" +
+            "    WHERE rn = 1\n" +
+            "),\n" +
+            "hiv_art_status AS (\n" +
+            "    SELECT\n" +
+            "        DISTINCT person_uuid,\n" +
+            "        TRUE AS commenced\n" +
+            "    FROM\n" +
+            "        hiv_art_clinical\n" +
+            "    WHERE\n" +
+            "        archived = 0\n" +
+            "        AND is_commencement IS TRUE\n" +
+            "),\n" +
+            "clinical_eval AS (\n" +
+            "    SELECT\n" +
+            "        DISTINCT person_uuid,\n" +
+            "        TRUE AS has_eval\n" +
+            "    FROM\n" +
+            "        hiv_observation\n" +
+            "    WHERE\n" +
+            "        type = 'Clinical evaluation'\n" +
+            "        AND archived = 0\n" +
+            "),\n" +
+            "mental_health AS (\n" +
+            "    SELECT\n" +
+            "        DISTINCT person_uuid,\n" +
+            "        TRUE AS has_mental_health\n" +
+            "    FROM\n" +
+            "        hiv_observation\n" +
+            "    WHERE\n" +
+            "        type = 'Mental health'\n" +
+            "        AND archived = 0\n" +
+            "),\n" +
+            "biometric AS(\n" +
+            "    SELECT\n" +
+            "        DISTINCT person_uuid,\n" +
+            "        TRUE AS biometricstatus\n" +
+            "    FROM\n" +
+            "        biometric\n" +
+            "    WHERE\n" +
+            "        person_uuid IS NOT NULL\n" +
+            "        AND archived = 0\n" +
+            ")\n" +
+            "SELECT\n" +
+            "    p.id,\n" +
+            "    p.created_by AS createby,\n" +
+            "    p.date_of_registration AS dateofregistration,\n" +
+            "    p.first_name AS firstname,\n" +
+            "    p.surname AS surname,\n" +
+            "    p.other_name AS othername,\n" +
+            "    CASE\n" +
+            "        WHEN p.other_name IS NULL\n" +
+            "        OR p.other_name = '' THEN p.first_name || ' ' || p.surname\n" +
+            "        ELSE p.first_name || ' ' || p.other_name || ' ' || p.surname\n" +
+            "    END AS fullname,\n" +
+            "    p.hospital_number AS hospitalnumber,\n" +
+            "    CAST(\n" +
+            "        EXTRACT(\n" +
+            "            YEAR\n" +
+            "            FROM\n" +
+            "                AGE(CURRENT_DATE, p.date_of_birth)\n" +
+            "        ) AS INTEGER\n" +
+            "    ) AS age,\n" +
+            "    INITCAP(p.sex) AS sex,\n" +
+            "    p.date_of_birth AS dateofbirth,\n" +
+            "    p.is_date_of_birth_estimated AS isdobestimated,\n" +
+            "    p.facility_id AS facilityid,\n" +
+            "    p.uuid AS personuuid,\n" +
+            "    (pc.display IS NOT NULL) AS isenrolled,\n" +
+            "    e.target_group_id AS targetgroupid,\n" +
+            "    e.id AS enrollmentid,\n" +
+            "    e.unique_id AS uniqueid,\n" +
+            "    pc.display AS currentstatus,\n" +
+            "    ca.commenced,\n" +
+            "    rv.visit_id AS visitid,\n" +
+            "    rv.checkin_date AS checkInDate,\n" +
+            "    COALESCE(ce.has_eval, FALSE) AS clinicalevaluation,\n" +
+            "    COALESCE(mh.has_mental_health, FALSE) AS mentalhealth,\n" +
+            "    COALESCE(b.biometricstatus, FALSE) AS biometricstatus,\n" +
+            "    (pa.person_uuid IS NOT NULL) AS isOnAnc,\n" +
+            "    (pmt.person_uuid IS NOT NULL) AS isOnPmtct,\n" +
+            "    (prep.person_uuid IS NOT NULL) AS isOnPrep,\n" +
+            "    (hts.person_uuid IS NOT NULL) AS isOnHts,\n" +
+            "    (hts_rst.person_uuid IS NOT NULL) AS isOnHtsRiskStratification,\n" +
+            "    pmt.hiv_status AS hivStatus,\n" +
+            "    pa.static_hiv_status AS staticHivStatus,\n" +
+            "    COALESCE(\n" +
+            "        (\n" +
+            "            p.contact -> 'contact' -> 0 -> 'contactPoint' ->> 'value'\n" +
+            "        ),\n" +
+            "        (\n" +
+            "            p.contact_point -> 'contactPoint' -> 0 ->> 'value'\n" +
+            "        ),\n" +
+            "        (\n" +
+            "            p.contact_point -> 'contactPoint' -> 1 ->> 'value'\n" +
+            "        )\n" +
+            "    ) AS phoneNumber,\n" +
+            "    COALESCE(\n" +
+            "        CASE\n" +
+            "            WHEN p.contact -> 'contact' -> 0 -> 'address' IS NOT NULL THEN TRIM(\n" +
+            "                CONCAT_WS(\n" +
+            "                    ' ',\n" +
+            "                    CASE\n" +
+            "                        WHEN p.contact -> 'contact' -> 0 -> 'address' -> 'line' IS NOT NULL THEN array_to_string(\n" +
+            "                            ARRAY(\n" +
+            "                                SELECT\n" +
+            "                                    value\n" +
+            "                                FROM\n" +
+            "                                    jsonb_array_elements_text(\n" +
+            "                                        p.contact -> 'contact' -> 0 -> 'address' -> 'line'\n" +
+            "                                    ) AS value\n" +
+            "                                WHERE\n" +
+            "                                    value IS NOT NULL\n" +
+            "                                    AND value != ''\n" +
+            "                            ),\n" +
+            "                            ' '\n" +
+            "                        )\n" +
+            "                        ELSE NULL\n" +
+            "                    END,\n" +
+            "                    NULLIF(\n" +
+            "                        p.contact -> 'contact' -> 0 -> 'address' ->> 'city',\n" +
+            "                        ''\n" +
+            "                    )\n" +
+            "                )\n" +
+            "            )\n" +
+            "            ELSE NULL\n" +
+            "        END,\n" +
+            "        CASE\n" +
+            "            WHEN p.address -> 'address' -> 0 IS NOT NULL THEN TRIM(\n" +
+            "                CONCAT_WS(\n" +
+            "                    ' ',\n" +
+            "                    CASE\n" +
+            "                        WHEN p.address -> 'address' -> 0 -> 'line' IS NOT NULL THEN array_to_string(\n" +
+            "                            ARRAY(\n" +
+            "                                SELECT\n" +
+            "                                    value\n" +
+            "                                FROM\n" +
+            "                                    jsonb_array_elements_text(p.address -> 'address' -> 0 -> 'line') AS value\n" +
+            "                                WHERE\n" +
+            "                                    value IS NOT NULL\n" +
+            "                                    AND value != ''\n" +
+            "                            ),\n" +
+            "                            ' '\n" +
+            "                        )\n" +
+            "                        ELSE NULL\n" +
+            "                    END,\n" +
+            "                    NULLIF(p.address -> 'address' -> 0 ->> 'city', '')\n" +
+            "                )\n" +
+            "            )\n" +
+            "            ELSE NULL\n" +
+            "        END\n" +
+            "    ) AS address\n" +
+            "FROM\n" +
+            "    base_patient p\n" +
+            "    JOIN consultation_patients cp ON cp.person_uuid = p.uuid\n" +
+            "    LEFT JOIN latest_visit_per_patient rv ON rv.person_uuid = p.uuid\n" +
+            "    LEFT JOIN hiv_enrollment e ON e.person_uuid = p.uuid\n" +
+            "    LEFT JOIN base_application_codeset pc ON pc.id = e.status_at_registration_id\n" +
+            "    LEFT JOIN hiv_art_status ca ON ca.person_uuid = p.uuid\n" +
+            "    LEFT JOIN clinical_eval ce ON ce.person_uuid = p.uuid\n" +
+            "    LEFT JOIN mental_health mh ON mh.person_uuid = p.uuid\n" +
+            "    LEFT JOIN biometric b ON b.person_uuid = p.uuid\n" +
+            "    LEFT JOIN pmtct_anc pa ON pa.person_uuid = p.uuid\n" +
+            "    AND pa.archived = 0\n" +
+            "    LEFT JOIN pmtct_enrollment pmt ON pmt.person_uuid = p.uuid\n" +
+            "    AND pmt.archived = 0\n" +
+            "    LEFT JOIN prep_enrollment prep ON prep.person_uuid = p.uuid\n" +
+            "    AND prep.archived = 0\n" +
+            "    LEFT JOIN hts_client hts ON hts.person_uuid = p.uuid\n" +
+            "    AND hts.archived = 0\n" +
+            "    LEFT JOIN hts_risk_stratification hts_rst ON hts_rst.person_uuid = p.uuid\n" +
+            "    AND hts_rst.archived = 0 ORDER BY rv.checkin_date DESC", nativeQuery = true)
     List<PersonProjection> findAllCheckedInPersonsDetails(String serviceCode);
 
     @Query(value = "SELECT\n" +

@@ -224,32 +224,29 @@ const ViewPatient = (props) => {
   const calculate_age = (dob) => {
     const today = new Date();
     const dateParts = dob.split("-");
-    const birthDate = new Date(dob); // create a date object directlyfrom`dob1`argument
+    const birthDate = new Date(dob); // create a date object directly from dob argument
     let age_now = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
-    if (age_now <= 0 && m < 0 && today.getDate() < birthDate.getDate()) {
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
       age_now--;
     }
-    // if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-    //     age_now--;
-    // }
     if (age_now === 0) {
-      return m;
+      return m + " month(s)";
     }
-    return age_now;
+    return age_now + " year(s)";
   };
   const getPatient = useCallback(async () => {
     if (patientId) {
-      const response = await axios.get(`${baseUrl}patient/${patientId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const sexCodeset = await axios.get(
-        `${baseUrl}application-codesets/v2/SEX`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const patient = response.data;
-      //console.log(patient);
-      setPatientData(patient);
+      try {
+        const response = await axios.get(`${baseUrl}patient/${patientId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const sexCodeset = await axios.get(
+          `${baseUrl}application-codesets/v2/SEX`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const patient = response.data;
+        setPatientData(patient);
       const contacts = patient.contact ? patient.contact : [];
       setContacts(contacts.contact);
       const identifiers = patient.identifier;
@@ -274,9 +271,10 @@ const ViewPatient = (props) => {
       const gender = patient.gender;
 
       //console.log(_.upperFirst(_.lowerCase(patient.sex)))
-      const sex = _.find(sexCodeset.data, {
+      const sexMatch = _.find(sexCodeset.data, {
         display: _.upperFirst(_.lowerCase(patient.sex)),
-      }).id;
+      });
+      const sex = sexMatch ? sexMatch.id : null;
       const employmentStatus = patient.employmentStatus;
       const education = patient.education;
       const maritalStatus = patient.maritalStatus;
@@ -311,11 +309,16 @@ const ViewPatient = (props) => {
         setValue("address", country.city);
         setValue("landmark", country.line[0]);
       }
-      setValue("pnumber", phone ? phone.value : "+234");
+      const phoneValue = phone ? phone.value : "+234";
+      setValue("pnumber", phoneValue);
       setValue("email", email ? email.value : null);
       setValue("altPhonenumber", altphone ? altphone.value : "+234");
+      
+      } catch (error) {
+        console.error("Error in getPatient:", error);
+      }
     }
-  }, []);
+  }, [patientId, setValue]);
   const handleAddRelative = () => {
     setShowRelative(true);
   };
@@ -901,28 +904,12 @@ const ViewPatient = (props) => {
                             type="date"
                             name="dateOfRegistration"
                             id="dateOfRegistration"
-                            max={today}
-                            {...register("dateOfRegistration")}
-                            onChange={(e) => {
-                              if (
-                                new Date(e.target.value) instanceof Date &&
-                                e.target.value != ""
-                              ) {
-                                setMaxDOB(
-                                  new Date(e.target.value)
-                                    .toISOString()
-                                    .substr(0, 10)
-                                    .replace("T", " ")
-                                );
-                              } else {
-                                setMaxDOB(
-                                  new Date()
-                                    .toISOString()
-                                    .substr(0, 10)
-                                    .replace("T", " ")
-                                );
-                              }
-                            }}
+                            value={
+                              Object.keys(patientData).length !== 0 &&
+                              patientData.dateOfRegistration
+                                ? new Date(patientData.dateOfRegistration).toISOString().substr(0, 10)
+                                : ""
+                            }
                             style={{ border: "1px solid #014d88" }}
                             readOnly
                           />
@@ -940,23 +927,15 @@ const ViewPatient = (props) => {
                             type="text"
                             name="hospitalNumber"
                             id="hospitalNumber"
-                            autoComplete="off"
-                            onInput={(e) => {
-                              e.target.value = e.target.value.replace(
-                                /\s/g,
-                                ""
-                              );
-                           
-                              checkHospitalNumber(e.target.value);
-                            }}
-                            onChange={checkHospitalNumber}
-                            {...register("hospitalNumber", {
-                              onChange: (e) => {
-                                checkHospitalNumber(
-                                  e.target.value.replace(/\s/g, "")
-                                );
-                              },
-                            })}
+                            value={
+                              Object.keys(patientData).length !== 0 &&
+                              patientData.identifier &&
+                              patientData.identifier.identifier
+                                ? (patientData.identifier.identifier.find(
+                                    (obj) => obj.type === "HospitalNumber"
+                                  )?.value || "")
+                                : ""
+                            }
                             style={{ border: "1px solid #014d88" }}
                             readOnly
                           />
@@ -977,38 +956,14 @@ const ViewPatient = (props) => {
                           <input
                             className="form-control"
                             name="ninNumber"
-                            type="number"
-                            {...register("ninNumber")}
+                            type="text"
                             id="ninNumber"
-                            autoComplete="off"
-                            onChange={(e) => {
-                             
-                              clearErrors("ninNumber");
-                              e.target.value = e.target.value.replace(
-                                /\D/g,
-                                ""
-                              );
-                              checkNIN(e);
-                              if (e.target.value.length > e.target.maxLength) {
-                                e.target.value = e.target.value.slice(
-                                  0,
-                                  e.target.maxLength
-                                );
-                                clearErrors("ninNumber");
-                              } else if (
-                                e.target.value.length > 0 &&
-                                e.target.value.length < e.target.maxLength
-                              ) {
-                                setError("ninNumber");
-                              } else if (
-                                e.target.value.length <= 0 ||
-                                e.target.value.length == e.target.maxLength
-                              ) {
-                                clearErrors("ninNumber");
-                              }
-                            }}
-                            minLength={11}
-                            maxLength={11}
+                            value={
+                              Object.keys(patientData).length !== 0 &&
+                              patientData.ninNumber
+                                ? patientData.ninNumber
+                                : ""
+                            }
                             style={{ border: "1px solid #014d88" }}
                             readOnly
                           />
@@ -1044,11 +999,12 @@ const ViewPatient = (props) => {
                             type="text"
                             name="firstName"
                             id="firstName"
-                            {...register("firstName", {
-                              onChange: (e) => {
-                                alphabetOnly(e, "firstName");
-                              },
-                            })}
+                            value={
+                              Object.keys(patientData).length !== 0 &&
+                              patientData.firstName
+                                ? patientData.firstName
+                                : ""
+                            }
                             style={{ border: "1px solid #014d88" }}
                             readOnly
                           />
@@ -1064,11 +1020,12 @@ const ViewPatient = (props) => {
                             type="text"
                             name="middleName"
                             id="middleName"
-                            {...register("middleName", {
-                              onChange: (e) => {
-                                alphabetOnly(e, "middleName");
-                              },
-                            })}
+                            value={
+                              Object.keys(patientData).length !== 0 &&
+                              patientData.otherName
+                                ? patientData.otherName
+                                : ""
+                            }
                             style={{ border: "1px solid #014d88" }}
                             readOnly
                           />
@@ -1086,11 +1043,12 @@ const ViewPatient = (props) => {
                             type="text"
                             name="lastName"
                             id="lastName"
-                            {...register("lastName", {
-                              onChange: (e) => {
-                                alphabetOnly(e, "lastName");
-                              },
-                            })}
+                            value={
+                              Object.keys(patientData).length !== 0 &&
+                              patientData.surname
+                                ? patientData.surname
+                                : ""
+                            }
                             style={{ border: "1px solid #014d88" }}
                             readOnly
                           />
@@ -1109,7 +1067,10 @@ const ViewPatient = (props) => {
                             name="sex"
                             id="sex"
                             value={
-                              patientData.sex !== null ? patientData.sex : " "
+                              Object.keys(patientData).length !== 0 &&
+                              patientData.sex !== null
+                                ? patientData.sex
+                                : ""
                             }
                             style={{ border: "1px solid #014d88" }}
                             readOnly
@@ -1158,19 +1119,12 @@ const ViewPatient = (props) => {
                             type="date"
                             name="dob"
                             id="dob"
-                            min={minDOB}
-                            max={maxDOB}
-                            {...register("dob")}
-                            onChange={(e) => {
-                              clearErrors("dob");
-                              if (new Date(e.target.value) instanceof Date) {
-                          
-                                handleDobChange(e);
-                                clearErrors("dob");
-                              } else {
-                                setError("dob");
-                              }
-                            }}
+                            value={
+                              Object.keys(patientData).length !== 0 &&
+                              patientData.dateOfBirth
+                                ? new Date(patientData.dateOfBirth).toISOString().substr(0, 10)
+                                : ""
+                            }
                             style={{ border: "1px solid #014d88" }}
                             readOnly
                           />
@@ -1185,12 +1139,15 @@ const ViewPatient = (props) => {
                           <Label>Age</Label>
                           <input
                             className="form-control"
-                            type="number"
+                            type="text"
                             name="age"
                             id="age"
-                            {...register("age")}
-                            disabled={ageDisabled}
-                            onChange={(e) => handleAgeChange(e)}
+                            value={
+                              Object.keys(patientData).length !== 0 &&
+                              patientData.dateOfBirth
+                                ? calculate_age(patientData.dateOfBirth)
+                                : ""
+                            }
                             style={{ border: "1px solid #014d88" }}
                             readOnly
                           />
@@ -1293,33 +1250,22 @@ const ViewPatient = (props) => {
                     <div className="form-group  col-md-4">
                       <FormGroup>
                         <Label>Phone Number *</Label>
-                        <PhoneInput
-                          containerStyle={{
-                            width: "100%",
-                            border: "1px solid #014d88",
-                          }}
-                          inputStyle={{ width: "100%", borderRadius: "0px" }}
-                          country={"ng"}
-                          masks={{ ng: "...-...-....", at: "(....) ...-...." }}
-                          placeholder="(234)7099999999"
-                          value={getValues("pnumber")}
-                          onChange={(e) => {
-                            checkPhoneNumber(e, "pnumber");
-                          }}
-                          isValid={(value, country) => {
-                            if (value === country.countryCode) {
-                              return true;
-                            } else {
-                              if (value.length < 13) {
-                                errors.pnumber = true;
-                                return false;
-                              } else {
-                                errors.pnumber = false;
-                                return true;
-                              }
-                            }
-                          }}
-                          disabled={true}
+                        <input
+                          className="form-control"
+                          type="text"
+                          name="pnumber"
+                          id="pnumber"
+                          value={
+                            Object.keys(patientData).length !== 0 &&
+                            patientData.contactPoint &&
+                            patientData.contactPoint.contactPoint
+                              ? (patientData.contactPoint.contactPoint.find(
+                                  (obj) => obj.type === "phone"
+                                )?.value || "")
+                              : ""
+                          }
+                          style={{ border: "1px solid #014d88" }}
+                          readOnly
                         />
 
                         {/*                                                <input
@@ -1340,33 +1286,22 @@ const ViewPatient = (props) => {
                     <div className="form-group col-md-4">
                       <FormGroup>
                         <Label>Alt. Phone Number</Label>
-                        <PhoneInput
-                          containerStyle={{
-                            width: "100%",
-                            border: "1px solid #014d88",
-                          }}
-                          inputStyle={{ width: "100%", borderRadius: "0px" }}
-                          country={"ng"}
-                          masks={{ ng: "...-...-....", at: "(....) ...-...." }}
-                          placeholder="(234)7099999999"
-                          value={getValues("altPhonenumber")}
-                          onChange={(e) => {
-                            checkPhoneNumber(e, "altPhonenumber");
-                          }}
-                          isValid={(value, country) => {
-                            if (value === country.countryCode) {
-                              return true;
-                            } else {
-                              if (value.length < 13) {
-                                errors.altPhonenumber = true;
-                                return "Enter a valid phone number";
-                              } else {
-                                errors.altPhonenumber = false;
-                                return true;
-                              }
-                            }
-                          }}
-                          disabled={true}
+                        <input
+                          className="form-control"
+                          type="text"
+                          name="altPhonenumber"
+                          id="altPhonenumber"
+                          value={
+                            Object.keys(patientData).length !== 0 &&
+                            patientData.contactPoint &&
+                            patientData.contactPoint.contactPoint
+                              ? (patientData.contactPoint.contactPoint.find(
+                                  (obj) => obj.type === "altphone"
+                                )?.value || "")
+                              : ""
+                          }
+                          style={{ border: "1px solid #014d88" }}
+                          readOnly
                         />
                         {/*                                                <input
                                                     className="form-control"

@@ -14,7 +14,6 @@ import PatientCard from "../PatientCard";
 import ClientDashboard from "./index";
 import PersonDemographics from "../PersonDemographics";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
-import CheckIn from "./CheckIn";
 import { Tab } from "semantic-ui-react";
 import MaterialTable from "material-table";
 import Biometrics from "../Biometrics";
@@ -422,7 +421,6 @@ function Index(props) {
           />
           <Card style={{ marginTop: "5px" }}>
             <CardContent>
-              <CheckIn props={props} />
               <Tab panes={panes} />
             </CardContent>
           </Card>

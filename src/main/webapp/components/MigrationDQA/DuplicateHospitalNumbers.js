@@ -150,29 +150,25 @@ function DuplicateHospitalNumbers(props) {
                     state: { patientId : row.id, permissions:permissions  }
                 }
             },
-            {...(permissions.includes('edit_patient') || permissions.includes("all_permission")&&
-                    {
-                        name:'Edit',
-                        type:'link',
-                        icon:<MdModeEdit size="20" color='rgb(4, 196, 217)' />,
-                        to:{
-                            pathname: "/register-patient",
-                            state: { patientId : row.id, permissions:permissions  }
-                        }
-                    }
-                )},
-             {...(permissions.includes('delete_patient') || permissions.includes("all_permission")&&
-                    {
-                        name:'Delete',
-                        type:'link',
-                        icon:<MdDeleteForever size="20" color='rgb(4, 196, 217)'  />,
-                        deleteAction: () => {handleDelete(row.id)},
-                        to:{
-                            pathname: "/#",
-                            state: { patientObj: row, permissions:permissions  }
-                        }
-                    }
-                )}
+            ...(permissions.includes('edit_patient') || permissions.includes("all_permission") ? [{
+                name:'Edit',
+                type:'link',
+                icon:<MdModeEdit size="20" color='rgb(4, 196, 217)' />,
+                to:{
+                    pathname: "/register-patient",
+                    state: { patientId : row.id, permissions:permissions  }
+                }
+            }] : []),
+            ...(permissions.includes('delete_patient') || permissions.includes("all_permission") ? [{
+                name:'Delete',
+                type:'link',
+                icon:<MdDeleteForever size="20" color='rgb(4, 196, 217)'  />,
+                deleteAction: () => {handleDelete(row.id)},
+                to:{
+                    pathname: "/#",
+                    state: { patientObj: row, permissions:permissions  }
+                }
+            }] : [])
         ]
     }
     const handleRemoteData = query =>

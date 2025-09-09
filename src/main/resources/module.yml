@@ -30,3 +30,12 @@ permissions:
   - name: create_patient_appointment
     description: create patient appointment
     moduleName: PatientModule
+  - name: capture_patient_biometrics
+    description: capture patient biometrics
+    moduleName: PatientModule
+  - name: view_patient_appointment
+    description: view patient appointment
+    moduleName: PatientModule
+  - name: edit_patient
+    description: edit patient
+    moduleName: PatientModule
