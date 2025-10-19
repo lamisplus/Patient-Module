@@ -24,7 +24,7 @@ import org.lamisplus.modules.patient.repository.EncounterRepository;
 import org.lamisplus.modules.patient.repository.PersonRepository;
 import org.lamisplus.modules.patient.repository.VisitRepository;
 import org.springframework.data.domain.*;
-import org.springframework.messaging.simp.SimpMessageSendingOperations;
+//import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +49,7 @@ import static org.lamisplus.modules.patient.controller.PatientController.REPORT_
 @Slf4j
 public class PersonService {
 
-    private final SimpMessageSendingOperations messagingTemplate;
+//    private final SimpMessageSendingOperations messagingTemplate;
 
     static final String PERSON_NOT_FOUND_MESSAGE = "No person is  found with id  ";
     private final PersonRepository personRepository;
