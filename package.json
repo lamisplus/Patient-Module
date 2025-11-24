@@ -121,9 +121,9 @@
     "yup": "^0.32.8"
   },
   "scripts": {
-    "start": "cross-env react-scripts --openssl-legacy-provider --max_old_space_size=4096 start",
+    "start": "react-scripts start",
     "jsreport": "jsreport-start",
-    "build": "cross-env react-scripts --openssl-legacy-provider --max_old_space_size=4096 build && cp -r build/* src/main/resources/views/static/patient/",
+    "build": "react-scripts build && mkdir -p src/main/resources/views/static/patient/ && cp -r build/* src/main/resources/views/static/patient/",
     "serve": "serve -s build",
     "run-build": "react-scripts build && serve",
     "test": "react-scripts test --env=jsdom",
