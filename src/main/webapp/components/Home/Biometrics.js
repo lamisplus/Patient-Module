@@ -145,7 +145,7 @@ const Biometrics = (props) => {
         type: "link",
         icon: <MdPerson size="20" color="rgb(4, 196, 217)" />,
         to: {
-          pathname: "/patient-dashboard",
+          pathname: "/patient-biometrics",
           state: { patientObj: row, permissions: permissions },
         },
       }] : []),
