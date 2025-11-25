@@ -11,7 +11,7 @@ import axios from "axios";
 import { token, url as baseUrl } from "../../../../api";
 import { makeStyles } from "@material-ui/core/styles";
 import PatientCard from "../PatientCard";
-import ClientDashboard from "./index";
+import CheckIn from "./CheckIn";
 import PersonDemographics from "../PersonDemographics";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import { Tab } from "semantic-ui-react";
@@ -406,6 +406,7 @@ function Index(props) {
 
   return (
     <div className={classes.root}>
+    
       <div className="mb-6 col-md-6" style={{ padding: "10px 0" }}>
         <Breadcrumbs aria-label="breadcrumb">
           <Typography style={{ color: "#992E62" }}>Patient</Typography>
@@ -414,13 +415,16 @@ function Index(props) {
       </div>
       <Card>
         <CardContent>
+          
           <PersonDemographics
             patientObj={patientObj}
             permissions={permissions}
             patientBiometricStatus={patientBiometricStatus}
           />
           <Card style={{ marginTop: "5px" }}>
+ 
             <CardContent>
+              <CheckIn props={props} />
               <Tab panes={panes} />
             </CardContent>
           </Card>

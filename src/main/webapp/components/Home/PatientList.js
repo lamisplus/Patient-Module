@@ -169,7 +169,7 @@ const PatientList = (props) => {
         icon: <FaEye size="22" />,
         to: {
           pathname: "/view-patient",
-          state: { patientId: row.patientId, permissions: permissions },
+          state: { patientId: row.id, permissions: permissions },
         },
       },
       {
@@ -181,21 +181,22 @@ const PatientList = (props) => {
               icon: <MdPerson size="20" color="rgb(4, 196, 217)" />,
               to: {
                 pathname: "/patient-dashboard",
-                state: { patientObj: { ...row, id: row.patientId }, permissions: permissions },
+                state: { patientObj: row, permissions: permissions },
               },
             }
           : {}),
       },
       {
         ...(permissions.includes("edit_patient") ||
-          permissions.includes("all_permission") ? {
-            name: "Edit",
-            type: "link",
-            icon: <MdModeEdit size="20" color="rgb(4, 196, 217)" />,
-            to: {
-              pathname: "/register-patient",
-              state: { patientId: row.patientId, permissions: permissions },
-                },
+        permissions.includes("all_permission")
+          ? {
+              name: "Edit",
+              type: "link",
+              icon: <MdModeEdit size="20" color="rgb(4, 196, 217)" />,
+              to: {
+                pathname: "/register-patient",
+                state: { patientId: row.id, permissions: permissions },
+              },
             }
           : {}),
       },
@@ -207,7 +208,7 @@ const PatientList = (props) => {
               type: "link",
               icon: <MdDeleteForever size="20" color="rgb(4, 196, 217)" />,
               deleteAction: () => {
-                toggle(row.patientId);
+                toggle(row.id);
               },
               to: {
                 pathname: "/#",
@@ -235,37 +236,33 @@ const PatientList = (props) => {
             });
           } else {
             resolve({
-              data: result.data.records.map((row) => {
-                const mappedRow = {
-                  name: [row.firstName, row.otherName, row.surname]
-                    .filter(Boolean)
-                    .join(", "),
-                  id: getHospitalNumber(row.identifier),
-                  patientId: row.id,
-                  sex:
-                    row.sex?.toLowerCase()?.charAt(0)?.toUpperCase() +
-                    row.sex?.slice(1)?.toLowerCase(),
-                  dateOfBirth: row.dateOfBirth,
-                  age:
-                    row.dateOfBirth === 0 ||
-                    row.dateOfBirth === undefined ||
-                    row.dateOfBirth === null ||
-                    row.dateOfBirth === ""
-                      ? 0
-                      : calculateAge(row.dateOfBirth),
-                };
-                mappedRow.actions = (
+              data: result.data.records.map((row) => ({
+                name: [row.firstName, row.otherName, row.surname]
+                  .filter(Boolean)
+                  .join(", "),
+                id: getHospitalNumber(row.identifier),
+                sex:
+                  row.sex?.toLowerCase()?.charAt(0)?.toUpperCase() +
+                  row.sex?.slice(1)?.toLowerCase(),
+                dateOfBirth: row.dateOfBirth,
+                age:
+                  row.dateOfBirth === 0 ||
+                  row.dateOfBirth === undefined ||
+                  row.dateOfBirth === null ||
+                  row.dateOfBirth === ""
+                    ? 0
+                    : calculateAge(row.dateOfBirth),
+                actions: (
                   <div>
                     {permissions.includes("view_patient") ||
                     permissions.includes("all_permission") ? (
-                      <SplitActionButton actions={actionItems(mappedRow)} />
+                      <SplitActionButton actions={actionItems(row)} />
                     ) : (
                       ""
                     )}
                   </div>
-                );
-                return mappedRow;
-              }),
+                ),
+              })),
               page: query.page,
               totalCount: result.data.totalRecords,
             });

@@ -1,21 +1,34 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, memo, useState } from "react";
+import { Link, useHistory } from "react-router-dom";
+import MatButton from "@material-ui/core/Button";
+import { TiArrowBack } from "react-icons/ti";
+import { Button, Grid, MenuItem, Paper, TextField } from "@mui/material";
+import { Modal, ModalBody, ModalHeader } from "reactstrap";
+import FormGroup from "@mui/material/FormGroup";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { Label } from "semantic-ui-react";
+import { DesktopDateTimePicker } from "@mui/x-date-pickers/DesktopDateTimePicker";
+import DualListBox from "react-dual-listbox";
 import axios from "axios";
 import { token, url as baseUrl } from "../../../../../api";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
-import Typography from "@material-ui/core/Typography";
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-} from "@material-ui/core";
-import { Col, Row } from "reactstrap";
-import { Label } from "semantic-ui-react";
-import PropTypes from "prop-types";
-import { withStyles } from "@material-ui/core/styles";
+import { toast } from "react-toastify";
+import _ from "lodash";
+import Swal from "sweetalert2";
+import { useForm } from "react-hook-form";
+import { format } from "date-fns";
+import { makeStyles } from "@material-ui/core/styles";
+import moment from "moment";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import RecallPatient from "../../RecallPatient";
+import useRoles from "../../../hooks/useRoles";
 
-const styles = (theme) => ({
+
+const useStyles = makeStyles((theme) => ({
   root: {
     width: "100%",
+    marginBottom: 20,
+    flexGrow: 1,
   },
   heading: {
     fontSize: theme.typography.pxToRem(15),
@@ -46,234 +59,647 @@ const styles = (theme) => ({
       textDecoration: "underline",
     },
   },
-});
+  checkinModal: {
+    "& .modal-dialog": {
+      maxWidth: "1000px",
+    },
+    "& .ui.label": {
+      backgroundColor: "#fff",
+      fontSize: "16px",
+      color: "#014d88",
+      fontWeight: "bold",
+      textAlign: "left",
+    },
+    "& .card-title": {
+      color: "#fff",
+      fontWeight: "bold",
+    },
+    "& .form-control": {
+      borderRadius: "0.25rem",
+      height: "41px",
+    },
+    "& .card-header:first-child": {
+      borderRadius: "calc(0.25rem - 1px) calc(0.25rem - 1px) 0 0",
+    },
+    "& .dropdown-toggle::after": {
+      display: " block !important",
+    },
+    "& select": {
+      "-webkit-appearance": "listbox !important",
+    },
+    "& p": {
+      color: "red",
+    },
+    "& label": {
+      fontSize: "14px",
+      color: "#014d88",
+      fontWeight: "bold",
+    },
+  },
+  checkInDatePicker: {
+    "& .MuiFormControl-root.MuiTextField-root": {
+      border: "1px solid #eee",
+    },
+  },
+}));
+let newDate = new Date();
+function Index(props) {
+    const { hasRole, loading: rolesLoading } = useRoles();
+    const isRDE = hasRole("RDE");
+    const permissions = useMemo(
+    () => ({
+      canSeeCheckedInPatients: !isRDE, // POC users see this
+      // canSeeFindPatients: isRDE, // RDE users see this
+      // canSeeArtPatients: isRDE, // RDE users see this
+      // canSeeOvcLinkage: isRDE, // RDE users see this
+    }),
+    [isRDE]
+  );
+  const [patientDetails, setPatientDetails] = useState(null);
+  const [pimsEnrollment, setPimsEnrollment] = useState([]);
+  const [enablePPI, setEnablePPI] = useState(true);
+  const [modalRecall, setModalRecall] = useState(false);
+  const toggleRecall = () => {
+    setPatientDetails(null);
+    setPimsEnrollment([]);
+    setModalRecall(!modalRecall);
+  };
 
-function PatientsCard(props) {
-  console.log(props);
-  const { classes } = props;
-  const patientObj = props.patientObj ? props.patientObj : {};
-  const permissions = props.permissions ? props.permissions : [];
-  const [modal, setModal] = useState(false); //Modal to collect sample
-  const [patientBiometricStatus, setPatientBiometricStatus] = useState(true);
-  const toggleModal = () => setModal(!modal);
+  const userDetail =
+    props.location && props.location.state ? props.location.state.user : null;
+  const [loading, setLoading] = useState("");
+  let history = useHistory();
+  const classes = useStyles();
+  const [checkInDate, setCheckInDate] = useState(new Date());
+  const [checkOutDate, setCheckOutDate] = useState(new Date());
+  const [today, setToday] = useState(
+    new Date().toISOString().substr(0, 10).replace("T", " ")
+  );
+  const patientObj =
+    history.location && history.location.state
+      ? history.location.state.patientObj
+      : {};
 
-  const [biometricStatus, setBiometricStatus] = useState(true);
-  const [devices, setDevices] = useState([]);
-  useEffect(() => {
-    //setPatientBiometricStatus(props.patientBiometricStatus)
-    TemplateType();
+  const permissionsSet = useMemo(() => {
+    const permArray = history.location?.state?.permissions || [];
+    return new Set(permArray);
+  }, [history.location?.state?.permissions]);
+
+  const { handleSubmit, control } = useForm();
+  const [modal, setModal] = useState(false);
+  const [allServices, setAllServices] = useState(null);
+  const [checkinStatus, setCheckinStatus] = useState(false);
+  const [modalCheckOut, setModalCheckOut] = useState(false);
+  const [services, setServices] = useState([]);
+  const [selectedServices, setSelectedServices] = useState({ selected: [] });
+  const [patientVisits, setPatientVisits] = useState([]);
+  const [patientBiometricStatus, setPatientBiometricStatus] = useState(
+    patientObj.biometricStatus
+  );
+  const [biometricsModuleInstalled, setBiometricsModuleInstalled] =
+    useState(false);
+
+  const [checkOutObj, setCheckOutObj] = useState({
+    personId: "",
+    visitStartDate: format(new Date(newDate), "yyyy-MM-dd hh:mm"),
+  });
+  const [checkInObj, setCheckInObj] = useState({
+    serviceIds: "",
+    visitDto: {
+      personId: patientObj.id,
+      checkInDate: format(new Date(newDate), "yyyy-MM-dd hh:mm"),
+    },
+  });
+
+  const loadServices = useCallback(async () => {
+    try {
+      const response = await axios.get(`${baseUrl}patient/post-service`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setAllServices(response.data);
+
+      const mappedServices = Object.entries(response.data).map(
+        ([key, value]) => ({
+          label: value.moduleServiceName,
+          value: value.moduleServiceCode,
+        })
+      );
+
+      // Filter out Consultation from the services list
+      const filteredServices = mappedServices.filter(
+        (service) => service.label !== "Consultation"
+      );
+
+      setServices(filteredServices);
+
+      // const triageService = mappedServices.find(service => service.label === "Triage");
+      // console.log("Triage service:", triageService);
+    } catch (e) {
+      await Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "An error occurred fetching services!",
+      });
+    }
   }, []);
-  //Get list of KP
-  const TemplateType = () => {
+
+  const loadPatientVisits = useCallback(async () => {
+    try {
+      const response = await axios.get(
+        `${baseUrl}patient/visit/visit-by-patient/${patientObj.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPatientVisits(response.data);
+      console.log("Patient visits:", response.data);
+
+      // Check for ANY pending encounters across all visits
+      const hasPendingEncounter = response.data.some((visit) => {
+        // Check if visit itself is pending and not checked out
+        if (visit.checkOutDate === null && visit.status === "PENDING") {
+          return true;
+        }
+
+        // Check if any encounters within the visit are pending
+        return (
+          visit.encounters &&
+          visit.encounters.some((encounter) => encounter.status === "PENDING")
+        );
+      });
+
+      console.log("Has pending encounter:", hasPendingEncounter);
+      setCheckinStatus(hasPendingEncounter);
+    } catch (e) {
+      await Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "An error occurred fetching services!",
+      });
+    }
+  }, []);
+  let visitTypesRows = null;
+  if (services && services.length > 0) {
+    visitTypesRows = services.map((service, index) => (
+      <MenuItem
+        key={service.moduleServiceCode}
+        value={service.moduleServiceCode}
+      >
+        {service.moduleServiceName}
+      </MenuItem>
+    ));
+  }
+
+  const onChangeDate = (date) => {
+    console.log(date.target.value);
+    const newDate = moment(new Date(date.target.value)).format(
+      "yyyy-MM-dd hh:mm"
+    );
+    setCheckInDate(newDate);
+    console.log(newDate);
+  };
+  const handleCheckIn = () => {
+    setModal(true);
+  };
+  const handleCheckOut = () => {
+    setModalCheckOut(true);
+  };
+
+  const onCancelCheckIn = () => {
+    setModal(false);
+  };
+  const onCancelCheckOut = () => {
+    setModalCheckOut(false);
+  };
+  const onDelete = () => {};
+  const onSubmit = async (data) => {
+    try {
+      const today = new Date();
+      const visitDetails = await axios.get(
+        `${baseUrl}patient/visit/visit-detail/${patientObj.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const visitDetail = visitDetails.data;
+      const pendingVisit = visitDetail.find((obj) => obj.status == "PENDING");
+      let visit = null;
+      if (!pendingVisit) {
+        const visitResponse = await axios.post(
+          `${baseUrl}patient/visit`,
+          {
+            personId: patientObj.id,
+            visitStartDate: today,
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        visit = visitResponse.data;
+      } else {
+        visit = pendingVisit;
+      }
+      await axios.post(
+        `${baseUrl}patient/encounter`,
+        {
+          encounterDate: today,
+          personId: patientObj.id,
+          serviceCode: data.VisitType,
+          status: "PENDING",
+          visitId: visit.id,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setModal(false);
+      await Swal.fire({
+        icon: "success",
+        text: "CheckedIn successfully",
+        timer: 1500,
+      });
+    } catch (e) {
+      await Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "An error occurred while checking in Patient!",
+      });
+    }
+  };
+  const onError = async () => {
+    await Swal.fire({
+      icon: "error",
+      title: "Oops...",
+      text: "An error occurred while checking in Patient!",
+    });
+  };
+  let checkInServicesID = [];
+  /**** Submit Button For CheckIN  */
+  const handleSubmitCheckIn = (e) => {
+    e.preventDefault();
+    //Check if selected service object is empty before creating visit and posting.
+    let m = moment(checkInDate, "yyyy-MM-DD hh:mm").format("yyyy-MM-DD H:mm");
+    if (selectedServices.selected.length > 0 && moment(m).isValid()) {
+      selectedServices.selected.length > 0 &&
+        selectedServices.selected.map((service) => {
+          checkInServicesID.push(
+            _.find(allServices, { moduleServiceCode: service }).id
+          );
+        });
+
+      checkInObj.serviceIds = checkInServicesID;
+      //Ensure date time is in 24hr format
+      checkInObj.visitDto.checkInDate = moment(
+        checkInDate,
+        "yyyy-MM-DD hh:mm"
+      ).format("yyyy-MM-DD HH:mm");
+      axios
+        .post(`${baseUrl}patient/visit/checkin`, checkInObj, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((response) => {
+          console.log("checkIn", response);
+          toast.success("Patient Check-In successful");
+          setCheckinStatus(true);
+          onCancelCheckIn();
+          loadPatientVisits();
+        })
+        .catch((error) => {
+          toast.error(
+            "An error occurred. Please ensure the patient is eligible for the selected services and try again.",
+            error
+          );
+          onCancelCheckIn();
+        });
+    } else {
+      toast.error(
+        "Kindly check the form for a valid date and selected services"
+      );
+    }
+  };
+
+  const handleSubmitCheckOut = (e) => {
+    e.preventDefault();
+    const getVisitID = patientVisits.find(
+      (visits) => visits.status === "PENDING"
+    );
+
     axios
-      .get(`${baseUrl}modules/check?moduleName=biometric`, {
+      .put(`${baseUrl}patient/visit/checkout/${getVisitID.id}`, getVisitID.id, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((response) => {
-        setBiometricStatus(response.data);
-        if (response.data === true) {
-          axios
-            .get(`${baseUrl}biometrics/devices`, {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-            .then((response) => {
-              setDevices(response.data);
-            })
-            .catch((error) => {
-              console.log(error);
-            });
-        }
+        toast.success("Record save successful");
+        setCheckinStatus(false);
+        onCancelCheckOut();
+        loadPatientVisits();
       })
       .catch((error) => {
-        //console.log(error);
+        console.log(error);
+        toast.error("Something went wrong");
+        onCancelCheckOut();
       });
   };
-  const getHospitalNumber = (identifierContainer) => {
-    const identifiers = Array.isArray(identifierContainer?.identifier)
-      ? identifierContainer.identifier
-      : Array.isArray(identifierContainer)
-      ? identifierContainer
-      : [];
-    const hospitalNumber = identifiers.find(
-      (obj) => obj?.type === "HospitalNumber"
-    );
-    return hospitalNumber?.value ?? "";
+  const onServiceSelect = (selectedValues) => {
+    setSelectedServices({ selected: selectedValues });
   };
-
-  const calculate_age = (dob) => {
-    if (!dob) return "";
-    const today = new Date();
-    const birthDate = new Date(dob);
-    let age_now = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-
-    if (age_now <= 0 && m < 0 && today.getDate() < birthDate.getDate()) {
-      age_now--;
-    }
-
-    if (age_now === 0) {
-      return m + " month(s)";
-    }
-    return age_now + " year(s)";
-  };
-
-  const getPhone = (contactPoint) => {
-    console.log("contact", contactPoint);
-    const phoneContact = contactPoint?.contactPoint?.find(
-      (obj) => obj.type == "phone"
-    );
-    return phoneContact ? phoneContact.value : "";
-  };
-
-  const getAddress = (address) => {
-    const first = address?.address?.[0];
-    if (!first) return null;
-    const line0 = Array.isArray(first.line) ? first.line[0] : first.line;
-    return `${line0 ?? ""}${first.city ? `, ${first.city}` : ""}`.trim();
-  };
-
-  const handleBiometricCapture = (id) => {
-    let patientObjID = id;
-    setModal(!modal);
-  };
-
+  useEffect(() => {
+    loadServices();
+    loadPatientVisits();
+  }, [loadServices, loadPatientVisits]);
   return (
-    <div className={classes.root}>
-      <Accordion defaultExpanded>
-        <AccordionSummary>
-          <Row>
-            <Col md={11}>
-              <Row className={"mt-1"}>
-                <Col md={12} className={classes.root2}>
-                  <b style={{ fontSize: "25px", color: "rgb(153, 46, 98)" }}>
-                    {patientObj.surname + ", " + patientObj.firstName}
-                  </b>
-                </Col>
-                <Col
-                  md={4}
-                  className={classes.root2}
-                  style={{ marginTop: "10px" }}
-                >
-                  <span style={{ color: "#000" }}>
-                    {" "}
-                    Hospital Numbers :{" "}
-                    <b style={{ color: "#0B72AA" }}>
-                      {getHospitalNumber(patientObj.identifier)}
-                    </b>
-                  </span>
-                </Col>
+    <>
+      <div className="row">
+        <div className="mb-3 col-md-3">&nbsp;</div>
+        <div className="mb-3 col-md-3">&nbsp;</div>
+        <div className="mb-3 col-md-3">&nbsp;</div>
+        <div className="mb-3 col-md-3">
+          <Link to={"/"}>
+            <MatButton
+              className=" float-right mr-1"
+              variant="contained"
+              floated="left"
+              startIcon={<TiArrowBack />}
+              style={{
+                backgroundColor: "rgb(153, 46, 98)",
+                color: "#fff",
+                height: "35px",
+              }}
+            >
+              <span style={{ textTransform: "capitalize" }}>Back</span>
+            </MatButton>
+          </Link>
 
-                <Col
-                  md={4}
-                  className={classes.root2}
-                  style={{ marginTop: "10px" }}
-                >
-                  <span style={{ color: "#000" }}>
-                    Date Of Birth :{" "}
-                    <b style={{ color: "#0B72AA" }}>{patientObj.dateOfBirth}</b>
-                  </span>
-                </Col>
-                <Col
-                  md={4}
-                  className={classes.root2}
-                  style={{ marginTop: "10px" }}
-                >
-                  <span style={{ color: "#000" }}>
-                    {" "}
-                    Age :{" "}
-                    <b style={{ color: "#0B72AA" }}>
-                      {calculate_age(patientObj.dateOfBirth)}
-                    </b>
-                  </span>
-                </Col>
-                <Col md={4} style={{ marginTop: "10px" }}>
-                  <span style={{ color: "#000" }}>
-                    {" "}
-                    Sex :{" "}
-                    <b
+
+          {(permissionsSet.has("patient_check_in") ||
+            permissionsSet.has("all_permission")) ? (
+              <Button
+                variant="contained"
+                style={{
+                  backgroundColor: checkinStatus ? "#ccc" : "rgb(4, 196, 217)",
+                  fontSize: "14PX",
+                  fontWeight: "bold",
+                  height: "35px",
+                }}
+                onClick={handleCheckIn}
+                className="float-right mr-1"
+                disabled={checkinStatus}
+              >
+                <span style={{ textTransform: "capitalize" }}>
+                  {checkinStatus ? "Already Checked In" : "Check In"}
+                </span>
+              </Button>
+            ) : null
+          }
+
+
+          {/* {checkinStatus === true ? (
+            <Button
+              variant="contained"
+              style={{
+                backgroundColor: "green",
+                fontSize: "14PX",
+                fontWeight: "bold",
+                height: "35px",
+              }}
+              onClick={handleCheckOut}
+              className=" float-right mr-1"
+            >
+              <span style={{ textTransform: "capitalize" }}>Check Out</span>
+            </Button>
+          ) : (
+            ""
+          )} */}
+
+          <Link>
+            <MatButton
+              className=" float-right mr-1"
+              variant="contained"
+              floated="left"
+              startIcon={<FontAwesomeIcon icon="fa-solid fa-fingerprint" />}
+              style={{
+                backgroundColor: "rgb(153, 46, 98)",
+                color: "#fff",
+                height: "35px",
+              }}
+              onClick={toggleRecall}
+            >
+              <span style={{ textTransform: "capitalize" }}>Identify</span>
+            </MatButton>
+          </Link>
+        </div>
+      </div>
+      <Modal
+        size="lg"
+        style={{ maxWidth: "900px" }}
+        isOpen={modal}
+        toggle={onCancelCheckIn}
+        className={classes.checkinModal}
+      >
+        <ModalHeader toggle={onCancelCheckIn}>
+          <h5
+            style={{ fontWeight: "bold", fontSize: "30px", color: "#992E62" }}
+          >
+            Select Check-In Service
+          </h5>
+        </ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleSubmitCheckIn}>
+            <Paper
+              style={{
+                display: "grid",
+                gridRowGap: "20px",
+                padding: "20px",
+                margin: "10px 10px",
+              }}
+            >
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <FormGroup
+                    style={{ width: "100%" }}
+                    className={classes.checkInDatePicker}
+                  >
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                      <Label
+                        for="post-services"
+                        style={{
+                          color: "#014d88",
+                          fontWeight: "bolder",
+                          fontSize: "18px",
+                        }}
+                      >
+                        Check-In Date *
+                      </Label>
+                      <DesktopDateTimePicker
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            sx={{
+                              /*label:{ color:'#014d88',fontWeight:'bolder',fontSize:'18px' }*/
+                              input: { fontSize: "14px" },
+                            }}
+                            fullWidth
+                          />
+                        )}
+                        value={checkInDate}
+                        onChange={(newValue) => {
+                          setCheckInDate(newValue);
+                        }}
+                        maxDate={new Date()}
+                        maxTime={new Date()}
+                        style={{ width: "100%" }}
+                      />
+                    </LocalizationProvider>
+                  </FormGroup>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormGroup>
+                    <Label
+                      for="post-services"
                       style={{
-                        color: "#0B72AA",
-                        fontFamily: `'poppins', sans-serif`,
+                        color: "#014d88",
                         fontWeight: "bolder",
+                        fontSize: "18px",
                       }}
                     >
-                      {patientObj.sex}
-                    </b>
-                  </span>
-                </Col>
-                <Col
-                  md={4}
-                  className={classes.root2}
-                  style={{ marginTop: "10px" }}
-                >
-                  <span style={{ color: "#000" }}>
-                    {" "}
-                    Phone Number :{" "}
-                    <b style={{ color: "#0B72AA" }}>
-                      {getPhone(patientObj?.contactPoint)}
-                    </b>
-                  </span>
-                </Col>
-                <Col
-                  md={4}
-                  className={classes.root2}
-                  style={{ marginTop: "10px" }}
-                >
-                  <span style={{ color: "#000" }}>
-                    {" "}
-                    Address :{" "}
-                    <b style={{ color: "#0B72AA" }}>
-                      {getAddress(patientObj.address)}{" "}
-                    </b>
-                  </span>
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-        </AccordionSummary>
-        <AccordionDetails className={classes.details}>
-          {biometricStatus === true ? (
-            <>
-              <div>
-                <Typography variant="caption">
-                  <Label
-                    style={{ height: "30px", fontSize: "14px" }}
-                    color={patientBiometricStatus === true ? "green" : "red"}
-                    size={"large"}
+                      <h5
+                        style={{
+                          fontWeight: "bold",
+                          fontSize: "30px",
+                          color: "#992E62",
+                        }}
+                      >
+                        Check-In Service *
+                      </h5>
+                    </Label>
+                    <DualListBox
+                      options={services}
+                      onChange={onServiceSelect}
+                      selected={selectedServices.selected}
+                    />
+                  </FormGroup>
+                </Grid>
+              </Grid>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Button type={"submit"} variant="contained" color={"primary"}>
+                    Submit
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+          </form>
+        </ModalBody>
+      </Modal>
+      {/* Modal for CheckOut Patient */}
+      <Modal
+        isOpen={modalCheckOut}
+        toggle={onCancelCheckOut}
+        className={classes.checkinModal}
+        style={{ maxWidth: "900px", height: "800px" }}
+      >
+        <ModalHeader toggle={onCancelCheckOut}>
+          <h5
+            style={{ fontWeight: "bold", fontSize: "30px", color: "#014d88" }}
+          >
+            Check Out{" "}
+          </h5>
+        </ModalHeader>
+        <ModalBody>
+          <form>
+            <Paper
+              style={{
+                display: "grid",
+                gridRowGap: "20px",
+                padding: "20px",
+                margin: "10px 10px",
+              }}
+            >
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <h5
+                    style={{
+                      color: "#992E62",
+                      fontSize: "20px",
+                      fontWeight: "bold",
+                    }}
                   >
-                    Biometrics{" "}
-                    {patientBiometricStatus === true
-                      ? "Captured"
-                      : "Not Captured"}
-                  </Label>
-                </Typography>
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <Typography variant="caption">
-                  <Label
-                    color={"red"}
-                    style={{ height: "30px", fontSize: "14px" }}
+                    Are you sure you want to check-out patient?
+                  </h5>
+                </Grid>
+                <Grid item xs={12}>
+                  <FormGroup
+                    style={{ width: "100%" }}
+                    className={classes.checkInDatePicker}
                   >
-                    Biometrics Module Not Install
-                  </Label>
-                </Typography>
-              </div>
-            </>
-          )}
-        </AccordionDetails>
-      </Accordion>
-      {/*
-            <CaptureBiometric  modalstatus={modal} togglestatus={toggleModal} patientId={patientObj.id} biometricDevices={devices} setPatientBiometricStatus={setPatientBiometricStatus} />
-*/}
-    </div>
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                      <Label
+                        for="post-services"
+                        style={{
+                          color: "#014d88",
+                          fontWeight: "bolder",
+                          fontSize: "16px",
+                        }}
+                      >
+                        Check-Out Date *
+                      </Label>
+                      <DesktopDateTimePicker
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            sx={{
+                              /*label:{ color:'#014d88',fontWeight:'bolder',fontSize:'18px' }*/
+                              input: { fontSize: "14px" },
+                            }}
+                            fullWidth
+                          />
+                        )}
+                        value={checkOutDate}
+                        onChange={(newValue) => {
+                          setCheckOutDate(newValue);
+                        }}
+                        maxDate={new Date()}
+                        maxTime={new Date()}
+                        style={{ width: "100%" }}
+                      />
+                    </LocalizationProvider>
+                  </FormGroup>
+                </Grid>
+              </Grid>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Button
+                    type={"submit"}
+                    onClick={handleSubmitCheckOut}
+                    variant="contained"
+                    color={"primary"}
+                  >
+                    Yes
+                  </Button>
+                  <Button
+                    onClick={onCancelCheckOut}
+                    variant="contained"
+                    style={{
+                      backgroundColor: "#992E62",
+                      color: "#fff",
+                      marginLeft: "10px",
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+          </form>
+        </ModalBody>
+      </Modal>
+      {/* End of Checkout Modal */}
+
+      <RecallPatient
+        modal={modalRecall}
+        toggle={toggleRecall}
+        patientDetails={patientDetails}
+        setPatientDetails={setPatientDetails}
+        pimsEnrollment={pimsEnrollment}
+        setPimsEnrollment={setPimsEnrollment}
+        personUuid={patientObj.uuid}
+      />
+    </>
   );
 }
 
-PatientsCard.propTypes = {
-  classes: PropTypes.object.isRequired,
-};
-
-export default withStyles(styles)(PatientsCard);
+export default Index;

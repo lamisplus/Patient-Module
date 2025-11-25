@@ -160,13 +160,13 @@ function PatientCard(props) {
               <Row className={"mt-1"}>
                 <Col md={12} className={classes.root2}>
                   <b style={{ fontSize: "25px", color: "rgb(153, 46, 98)" }}>
-                    {(patientObj.surname || "") + 
-                     ", " + 
-                     (patientObj.firstName || "") + 
-                     " " + 
-                     (patientObj.otherName && patientObj.otherName !== null 
-                       ? patientObj.otherName 
-                       : "")}
+                    {(patientObj.surname || patientObj.surName || "") +
+                     ", " +
+                     (patientObj.firstName || patientObj.firstname || patientObj.first_name || "") +
+                     " " +
+                     (patientObj.otherName && patientObj.otherName !== null
+                       ? patientObj.otherName
+                       : patientObj.other_name || "")}
                   </b>
                 </Col>
                 <Col
