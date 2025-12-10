@@ -138,6 +138,8 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "            p.surname ILIKE ?1  OR  \n" +
             "            p.other_name ILIKE ?1  OR  \n" +
             "            p.full_name ILIKE ?1  OR  \n" +
+            "            p.sex ILIKE ?1  OR  \n" +
+            "            TO_CHAR(p.date_of_birth, 'YYYY-MM-DD') ILIKE ?1 OR  \n" +
             "            (elem->>'value' ILIKE ?1 )  \n" +
             "          )  \n" +
             "          AND p.archived = ?2  \n" +
