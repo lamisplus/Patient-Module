@@ -302,7 +302,9 @@ const RegisterPatient = (props) => {
       console.log("=== END DEBUG ===");
       
       setBasicInfo(basicInfoData);
-      console.log("✅ setBasicInfo called with data:", basicInfoData);
+      // For edit mode, enable save button since hospital number already exists and is valid
+      setHospitalNumStatus2(true);
+
     }
   }, [patientId, getOptions]);
 
