@@ -391,7 +391,6 @@ public class PersonService {
 
     public boolean isNINExisting(String nin) {
         List<Person> person = personRepository.getPersonByNinNumber(nin);
-        System.out.println("Size = " + person.size());
         boolean reply = false;
         if (person.isEmpty()) reply = false;
         else reply = true;
@@ -461,8 +460,6 @@ public class PersonService {
         }
 
         long facilityTime = System.currentTimeMillis();
-        System.out.println("Facility ID retrieval: " + (facilityTime - startTime) + "ms");
-
 
         Pageable paging = PageRequest.of(pageNo, pageSize, Sort.by("id").descending());
 
@@ -478,7 +475,6 @@ public class PersonService {
         }
 
         long queryTime = System.currentTimeMillis();
-        System.out.println("Database query: " + (queryTime - facilityTime) + "ms");
 
         if (!personPage.hasContent()) {
             return null;
@@ -561,8 +557,6 @@ public class PersonService {
         result.setRecords(dtoList);
 
         long dtoTime = System.currentTimeMillis();
-        System.out.println("DTO conversion: " + (dtoTime - queryTime) + "ms");
-        System.out.println("Total time: " + (dtoTime - startTime) + "ms");
 
         return result;
     }
@@ -696,7 +690,6 @@ public class PersonService {
 //    }
 
     public Page toPage(List list, Pageable pageable) {
-        System.out.println("List Size Before= " + list.size());
         if (pageable.getOffset() >= list.size()) {
             return Page.empty();
         }
@@ -705,7 +698,6 @@ public class PersonService {
                 list.size() :
                 pageable.getOffset() + pageable.getPageSize());
         List subList = list.subList(startIndex, endIndex);
-        System.out.println("SubList Size After= " + subList.size());
         return new PageImpl(subList, pageable, list.size());
     }
 
@@ -775,7 +767,6 @@ public class PersonService {
             persons = personRepository.findPersonWithBiometricsUsingSearchParam(queryParam, 0, currentOrganisationUnitId, paging);
         } else {
             persons = personRepository.findPersonWithBiometrics(0, currentOrganisationUnitId, paging);
-            System.out.println("Testng the number of records "+persons.getNumberOfElements());
 
         }
 //        List<PersonResponseDto> personResponseDtoList = new ArrayList<>();
@@ -814,7 +805,6 @@ public class PersonService {
             persons = personRepository.findPersonWithOutBiometricsUsingSearchParam(queryParam, 0, currentOrganisationUnitId, paging);
         } else {
             persons = personRepository.findPersonWithOutBiometrics(0, currentOrganisationUnitId, paging);
-           // System.out.println("Testng the number of records "+persons.getNumberOfElements());
 
         }
 //        List<PersonResponseDto> personResponseDtoList = new ArrayList<>();

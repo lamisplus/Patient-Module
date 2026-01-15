@@ -75,11 +75,6 @@ public class VisitController {
             }
         }
 
-        System.out.println("=== DEBUG BACKEND ===");
-        System.out.println("CheckInDto: " + checkInDto);
-        System.out.println("Person ID: " + checkInDto.getVisitDto().getPersonId());
-        System.out.println("Service IDs: " + checkInDto.getServiceIds());
-
         return ResponseEntity.ok(visitService.checkInPerson(checkInDto));
     }
 

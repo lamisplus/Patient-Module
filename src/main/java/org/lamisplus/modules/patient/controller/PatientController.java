@@ -53,6 +53,7 @@ public class PatientController {
 
     @GetMapping(value = "/{id}")
     public ResponseEntity<PersonResponseDto> getPatient(@PathVariable("id") Long id) {
+        System.out.println("Here is the patient id " + id );
         return ResponseEntity.ok(personService.getPersonById(id));
     }
 

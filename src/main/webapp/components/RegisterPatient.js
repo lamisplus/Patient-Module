@@ -148,7 +148,6 @@ const RegisterPatient = (props) => {
   
   // Debug: Log basicInfo whenever it changes
   useEffect(() => {
-    console.log("🔄 basicInfo state updated:", basicInfo);
   }, [basicInfo]);
   const [relatives, setRelatives] = useState({
     address: "",
@@ -231,7 +230,7 @@ const RegisterPatient = (props) => {
         (obj) => obj.type == "HospitalNumber"
       );
 
-      const sexOptions = getOptions("SEX");
+      const sexOptions = getOptions("SEX")
       const sex = sexOptions.find(
         (option) => option.display.toLowerCase() === patient.sex.toLowerCase()
       )?.id;
@@ -288,18 +287,6 @@ const RegisterPatient = (props) => {
         ninNumber: "",
         email: email?.value || "",
       };
-      
-      console.log("=== PATIENT DATA DEBUG ===");
-      console.log("Original patient:", patient);
-      console.log("Hospital Number:", hospitalNumber);
-      console.log("Sex options:", sexOptions);
-      console.log("Selected sex ID:", sex);
-      console.log("Phone:", phone);
-      console.log("Email:", email);
-      console.log("Alt phone:", altphone);
-      console.log("Country data:", country);
-      console.log("Final basicInfo being set:", basicInfoData);
-      console.log("=== END DEBUG ===");
       
       setBasicInfo(basicInfoData);
       // For edit mode, enable save button since hospital number already exists and is valid
@@ -691,10 +678,7 @@ const RegisterPatient = (props) => {
         patientForm.id = patientId;
         patientDTO.person = patientForm;
 
-        //console.log("INPUT ", patientForm);
-
         if (patientId) {
-          // console.log("Edit data", patientForm);
 
           patientForm.id = null;
           patientForm.facilityId = patientFacilityId;
@@ -704,7 +688,6 @@ const RegisterPatient = (props) => {
             { headers: { Authorization: `Bearer ${token}` } }
           );
           setSaving(false);
-          //console.log("saved", response.data);
           toast.success("Patient Updated successfully");
           history.push("/");
         } else {
