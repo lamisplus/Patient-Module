@@ -1,6 +1,8 @@
 package org.lamisplus.modules.patient.repository;
 
 import org.lamisplus.modules.patient.domain.dto.PersonProjection;
+import org.lamisplus.modules.patient.domain.dto.TotalCounts;
+import org.lamisplus.modules.patient.domain.dto.YearlyStats;
 import org.lamisplus.modules.patient.domain.entity.Person;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -713,6 +715,31 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             ") AS combined_checks",
             nativeQuery = true)
     boolean isPatientHivPositive(String personId);
+
+
+    @Query(value = "SELECT COUNT(pp.uuid) AS patientCount,\n" +
+            "COUNT(CASE WHEN b.person_uuid IS NOT NULL THEN 1 END) AS patientWithBiometricCount,\n" +
+            "COUNT(CASE WHEN b.person_uuid IS NULL THEN 1 END) AS patientWithNoBiometricCount,\n" +
+            "COUNT(CASE WHEN pp.sex = 'Female' THEN 1 END) AS femalePatient,\n" +
+            "COUNT(CASE WHEN pp.sex = 'Male' THEN 1 END) AS malePatient\n" +
+            "FROM public.patient_person pp\n" +
+            "LEFT JOIN (\n" +
+            "    SELECT DISTINCT person_uuid\n" +
+            "    FROM public.biometric\n" +
+            "    WHERE archived = 0\n" +
+            ") b ON pp.uuid = b.person_uuid\n" +
+            "WHERE pp.archived = 0 AND pp.facility_id = ?1", nativeQuery = true)
+    TotalCounts getTotalCounts (Long facilityId);
+
+    @Query(value = "SELECT\n" +
+            "EXTRACT(YEAR FROM pp.date_of_registration) AS registrationYear,\n" +
+            "COUNT(CASE WHEN pp.sex = 'Female' THEN 1 END) AS femalePatient,\n" +
+            "COUNT(CASE WHEN pp.sex = 'Male' THEN 1 END) AS malePatient\n" +
+            "FROM public.patient_person pp\n" +
+            "WHERE pp.archived = 0 AND pp.facility_id = ?1\n" +
+            "GROUP BY EXTRACT(YEAR FROM pp.date_of_registration)\n" +
+            "ORDER BY registrationYear", nativeQuery = true)
+    List<YearlyStats> getPatientByYearTrends(Long facilityId);
 }
 
 
