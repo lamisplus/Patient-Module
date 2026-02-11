@@ -193,7 +193,6 @@ function Biometrics(props) {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(async (response) => {
-        console.log("patient bio", response.data);
         if (response.data.length > 0) {
           setStoredBiometrics(response.data);
           setPageLoading(true);

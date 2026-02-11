@@ -14,7 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessageSendingOperations;
+//import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -30,7 +30,7 @@ import java.util.Map;
 public class PatientController {
 
     public static final String REPORT_GENERATION_PROGRESS_TOPIC = "/topic/checking-in-out-process";
-    private final SimpMessageSendingOperations messagingTemplate;
+//    private final SimpMessageSendingOperations messagingTemplate;
 
     private final PersonService personService;
 
@@ -53,6 +53,7 @@ public class PatientController {
 
     @GetMapping(value = "/{id}")
     public ResponseEntity<PersonResponseDto> getPatient(@PathVariable("id") Long id) {
+        System.out.println("Here is the patient id " + id );
         return ResponseEntity.ok(personService.getPersonById(id));
     }
 
@@ -235,6 +236,11 @@ public class PatientController {
     public ResponseEntity<List<Map<String, Object>>> getCountRegistrationsByYearAndSex() {
         List<Map<String, Object>> result = personService.countRegistrationsByYearAndSex();
         return new ResponseEntity<>(result, HttpStatus.OK);
+    }
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<PatientDashboardResponse> getPatientDashboard(){
+        return ResponseEntity.ok(personService.getPatientDashboardResponse());
     }
 
 }
