@@ -238,4 +238,9 @@ public class PatientController {
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
 
+    @GetMapping("/dashboard")
+    public ResponseEntity<PatientDashboardResponse> getPatientDashboard(){
+        return ResponseEntity.ok(personService.getPatientDashboardResponse());
+    }
+
 }

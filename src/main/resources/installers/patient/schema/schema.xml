@@ -164,4 +164,29 @@
             ALTER TABLE patient_person ADD COLUMN source varchar(25);
         </sql>
     </changeSet>
+
+    <changeSet failOnError="false" author="Joshua Gabriel" id="patientQuery-003">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_patient_person_archived" tableName="patient_person"/>
+            </not>
+            <not>
+                <indexExists indexName="idx_biometric_archived_uuid" tableName="biometric"/>
+            </not>
+            <not>
+                <indexExists indexName="idx_patient_person_regyear_sex_active" tableName="patient_person"/>
+            </not>
+        </preConditions>
+        <sql>
+            CREATE INDEX idx_patient_person_archived
+                ON public.patient_person(archived, uuid);
+
+            CREATE INDEX idx_biometric_archived_uuid
+                ON public.biometric(archived, person_uuid);
+
+            CREATE INDEX idx_patient_person_regyear_sex_active
+                ON public.patient_person (date_of_registration, sex)
+                WHERE archived = 0;
+        </sql>
+    </changeSet>
 </databaseChangeLog>

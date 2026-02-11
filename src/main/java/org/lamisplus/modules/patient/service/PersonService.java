@@ -1023,4 +1023,15 @@ public class PersonService {
         return formattedResult;
     }
 
+    public PatientDashboardResponse getPatientDashboardResponse() {
+
+        List<YearlyStats> yearlyStatsList = personRepository.getPatientByYearTrends(getCurrentOrganisationUnitId());
+        TotalCounts totalCounts = personRepository.getTotalCounts(getCurrentOrganisationUnitId());
+
+        return new PatientDashboardResponse(totalCounts, yearlyStatsList);
+    }
+
+
+
+
 }
