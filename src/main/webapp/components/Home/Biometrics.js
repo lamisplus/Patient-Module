@@ -19,6 +19,7 @@ import MenuItem from "@mui/material/MenuItem";
 import BiometricsList from "./BiometricsList";
 import NotCaptured from "./NotCaptured";
 import NoRecapture from "./NoRecapture";
+import { usePermissions } from "../../hooks/usePermissions";
 
 import { forwardRef } from "react";
 import AddBox from "@material-ui/icons/AddBox";
@@ -114,7 +115,7 @@ const Biometrics = (props) => {
   const tableRef = useRef(null);
   const classes = useStyles();
   const [patients, setPatients] = useState([]);
-  const [permissions, setPermissions] = useState(props.permissions);
+  const { hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions();
   const [loading, setLoading] = useState("");
   const [modal, setModal] = useState(false);
   const [patient, setPatient] = useState(false);
@@ -136,17 +137,16 @@ const Biometrics = (props) => {
         icon: <FaEye size="22" />,
         to: {
           pathname: "/patient-biometrics",
-          state: { patientObj: row, permissions: permissions },
+          state: { patientObj: row },
         },
       },
-      ...(permissions.includes("view_patient") ||
-      permissions.includes("all_permission") ? [{
+      ...(hasAnyPermission("view_patient", "all_permission") ? [{
         name: "Dashboard",
         type: "link",
         icon: <MdPerson size="20" color="rgb(4, 196, 217)" />,
         to: {
           pathname: "/patient-biometrics",
-          state: { patientObj: row, permissions: permissions },
+          state: { patientObj: row },
         },
       }] : []),
     ];
@@ -179,8 +179,7 @@ const Biometrics = (props) => {
                   : calculateAge(row.dateOfBirth),
               actions: (
                 <div>
-                  {permissions.includes("view_patient") ||
-                  permissions.includes("all_permission") ? (
+                  {hasAnyPermission("view_patient", "all_permission") ? (
                     <SplitActionButton actions={actionItems(row)} />
                   ) : (
                     ""
@@ -245,8 +244,7 @@ const Biometrics = (props) => {
   };
   const PPISelect = () => (
     <div>
-      {permissions.includes("view_patient") ||
-      permissions.includes("all_permission") ? (
+      {hasAnyPermission("view_patient", "all_permission") ? (
         <FormGroup className=" float-right mr-1">
           <FormControlLabel
             control={
@@ -313,6 +311,7 @@ const Biometrics = (props) => {
         <>
           <h3>Patients with biometrics</h3>
           <MaterialTable
+            key={`table-${permissionsLoading}`}
             tableRef={tableRef}
             /*onSearchChange={(e) => {
                     handleSearchChange(e);
@@ -363,11 +362,11 @@ const Biometrics = (props) => {
           />
         </>
       ) : status === 2 ? (
-        <BiometricsList permissions={props.permissions} />
+        <BiometricsList  />
       ) : status === 3 ? (
-        <NotCaptured permissions={props.permissions} />
+        <NotCaptured  />
       ) : status === 4 ? (
-        <NoRecapture permissions={props.permissions} />
+        <NoRecapture  />
       ) : (
         ""
       )}

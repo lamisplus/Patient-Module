@@ -8,6 +8,7 @@ import Button from "@material-ui/core/Button";
 import FormGroup from "@mui/material/FormGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
+import { usePermissions } from "../../hooks/usePermissions";
 import AddBox from "@material-ui/icons/AddBox";
 import Check from "@material-ui/icons/Check";
 import Clear from "@material-ui/icons/Clear";
@@ -104,23 +105,11 @@ const useStyles = makeStyles((theme) => ({
 function NoRecapture(props) {
   const classes = useStyles();
   const [patients, setPatients] = useState([]);
-  const [permissions, setPermissions] = useState(props.permissions);
+  const { hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions();
   const [loading, setLoading] = useState("");
   const [patient, setPatient] = useState(false);
   const [enablePPI, setEnablePPI] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-
-  //Get list of Finger index
-  const userPermission = () => {
-    axios
-      .get(`${baseUrl}account`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((response) => {
-        setPermissions(response.data.permissions);
-      })
-      .catch((error) => {});
-  };
   const loadPatients = useCallback(async () => {
     try {
       await axios
@@ -139,24 +128,22 @@ function NoRecapture(props) {
 
   function actionItems(row) {
     return [
-      ...(permissions.includes("view_patient") ||
-      permissions.includes("all_permission") ? [{
+      ...(hasAnyPermission("view_patient", "all_permission") ? [{
         name: "Capture",
         type: "link",
         icon: <MdFingerprint size="22" />,
         to: {
           pathname: "/patient-biometrics",
-          state: { patientObj: row, permissions: permissions },
+          state: { patientObj: row },
         },
       }] : []),
-      ...(permissions.includes("view_patient") ||
-      permissions.includes("all_permission") ? [{
+      ...(hasAnyPermission("view_patient", "all_permission") ? [{
         name: "View",
         type: "link",
         icon: <FaEye size="22" />,
         to: {
           pathname: "/patient-dashboard",
-          state: { patientObj: row, permissions: permissions },
+          state: { patientObj: row },
         },
       }] : []),
     ];
@@ -190,8 +177,7 @@ function NoRecapture(props) {
                   : calculateAge(row.dateOfBirth),
               actions: (
                 <div>
-                  {permissions.includes("view_patient") ||
-                  permissions.includes("all_permission") ? (
+                  {hasAnyPermission("view_patient", "all_permission") ? (
                     <SplitActionButton actions={actionItems(row)} />
                   ) : (
                     ""
@@ -205,7 +191,6 @@ function NoRecapture(props) {
         });
     });
   useEffect(() => {
-    userPermission();
     loadPatients();
   }, []);
   const calculateAge = (dob) => {
@@ -243,8 +228,7 @@ function NoRecapture(props) {
   };
   const PPISelect = () => (
     <div>
-      {permissions.includes("view_patient") ||
-      permissions.includes("all_permission") ? (
+      {hasAnyPermission("view_patient", "all_permission") ? (
         <FormGroup className=" float-right mr-1">
           <FormControlLabel
             control={
@@ -276,6 +260,7 @@ function NoRecapture(props) {
       {/*<ToastContainer autoClose={3000} hideProgressBar />*/}
       <h4>Patients with no biometrics recapture</h4>
       <MaterialTable
+        key={`table-${permissionsLoading}`}
         icons={tableIcons}
         title={<PPISelect />}
         columns={[

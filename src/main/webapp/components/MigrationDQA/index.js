@@ -9,6 +9,7 @@ import {token, url as baseUrl} from "../../../../api";
 import {Link} from "react-router-dom";
 import Button from "@material-ui/core/Button";
 import {FaUserPlus} from "react-icons/fa";
+import { usePermissions } from "../../hooks/usePermissions";
 
 const useStyles = makeStyles(theme => ({
     card: {
@@ -57,35 +58,18 @@ const useStyles = makeStyles(theme => ({
 }));
 function Index(props) {
     const classes = useStyles();
-    const [permissions, setPermissions] = useState([]);
-    useEffect(() => {
-        userPermission();
-    }, []);
-    //Get list of Finger index
-    const userPermission =()=>{
-        axios
-            .get(`${baseUrl}account`,
-                { headers: {"Authorization" : `Bearer ${token}`} }
-            )
-            .then((response) => {
-                setPermissions(response.data.permissions);
-
-            })
-            .catch((error) => {
-            });
-
-    }
+    const { hasPermission, hasAnyPermission } = usePermissions();
     const panes = [
         { menuItem: 'Duplicate Hospital Numbers', render: () =>
                 <Tab.Pane>
-                    <DuplicateHospitalNumbers permissions={permissions}/>
+                    <DuplicateHospitalNumbers />
                 </Tab.Pane>
         }
     ];
     return (
         <div className={classes.root}>
             <ToastContainer autoClose={3000} hideProgressBar />
-            {permissions.includes('view_patient') || permissions.includes("all_permission") ? (
+            {hasAnyPermission('view_patient', 'all_permission') ? (
                 <Tab panes={panes} />
             ):""
             }

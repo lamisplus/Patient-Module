@@ -25,6 +25,7 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 
 import axios from "axios";
 import { token, url as baseUrl } from "../../../api";
+import { usePermissions } from "../hooks/usePermissions";
 
 import CircularProgress from "@mui/material/CircularProgress";
 
@@ -84,10 +85,7 @@ const Recapture = (props) => {
   //console.log("patient Id", props.patientId);
   const classes = useStyles();
   let history = useHistory();
-  const permissions =
-    history.location && history.location.state
-      ? history.location.state.permissions
-      : [];
+  const { hasPermission, hasAnyPermission } = usePermissions();
   const [biometricDevices, setbiometricDevices] = useState([]);
   const [objValues, setObjValues] = useState({
     biometricType: "FINGERPRINT",
@@ -586,8 +584,7 @@ const Recapture = (props) => {
         <ModalFooter>
           <div className={classes.root}>
             <div>
-              {permissions.includes("capture_patient_biometrics") ||
-              permissions.includes("all_permission") ? (
+              {hasAnyPermission("capture_patient_biometrics", "all_permission") ? (
                 <div
                   style={{
                     flex: "10",

@@ -266,15 +266,7 @@ function PatientDashboard(props) {
         //console.log(error);
       });
   };
-  const loadUserDetails = () => {
-    axios
-      .get(`${baseUrl}account`)
-      .then((response) => {})
-      .catch((error) => {});
-  };
-
   useEffect(() => {
-    loadUserDetails();
     loadServices();
     loadPatientVisits();
     checkForBiometricsModule();

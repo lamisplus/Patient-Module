@@ -8,6 +8,7 @@ import { makeStyles } from "@material-ui/core/styles";
 import axios from "axios";
 import { token, url as baseUrl } from "../../../api";
 import { Tab } from "semantic-ui-react";
+import { usePermissions } from "../hooks/usePermissions";
 import RecallPatient from "./RecallPatient";
 import PatientBiometrics from "./PatientBiometrics";
 import Pims from "./Pims";
@@ -66,7 +67,7 @@ const useStyles = makeStyles((theme) => ({
 function Index(props) {
   const classes = useStyles();
   const [patients, setPatients] = useState([]);
-  const [permissions, setPermissions] = useState([]);
+  const { hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions();
   const [loading, setLoading] = useState("");
   const [modal, setModal] = useState(false);
   const [patient, setPatient] = useState(false);
@@ -85,20 +86,6 @@ function Index(props) {
     setPatient(patient);
     setModal(!modal);
   };
-  useEffect(() => {
-    userPermission();
-  }, []);
-  //Get list of Finger index
-  const userPermission = () => {
-    axios
-      .get(`${baseUrl}account`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((response) => {
-        setPermissions(response.data.permissions);
-      })
-      .catch((error) => {});
-  };
   const enablePPIColumns = () => {
     setEnablePPI(!enablePPI);
   };
@@ -107,7 +94,7 @@ function Index(props) {
       menuItem: "Clients",
       render: () => (
         <Tab.Pane>
-          <PatientList permissions={permissions} />
+          <PatientList />
         </Tab.Pane>
       ),
     },
@@ -115,7 +102,7 @@ function Index(props) {
       menuItem: "Checked-In",
       render: () => (
         <Tab.Pane>
-          <CheckedInPatients permissions={permissions} />
+          <CheckedInPatients />
         </Tab.Pane>
       ),
     },
@@ -123,7 +110,7 @@ function Index(props) {
       menuItem: "Patient Biometrics",
       render: () => (
         <Tab.Pane>
-          <BiometricsCapture permissions={permissions} />
+          <BiometricsCapture />
         </Tab.Pane>
       ),
     },
@@ -131,7 +118,7 @@ function Index(props) {
     //   menuItem: "PIMS",
     //   render: () => (
     //     <Tab.Pane>
-    //       <Pims permissions={permissions} />
+    //       <Pims />
     //     </Tab.Pane>
     //   ),
     // },
@@ -139,7 +126,7 @@ function Index(props) {
       menuItem: "Migration DQA",
       render: () => (
         <Tab.Pane>
-          <MigrationDQA permissions={permissions} />
+          <MigrationDQA />
         </Tab.Pane>
       ),
     },
@@ -149,7 +136,7 @@ function Index(props) {
     <>
       <div className={classes.root}>
         <ToastContainer autoClose={3000} hideProgressBar />
-        {permissions.length > 0 && (
+        {!permissionsLoading && (
           <Card>
             <CardBody>
               <div className="row mb-12 col-md-12">
@@ -162,8 +149,7 @@ function Index(props) {
                   </Breadcrumbs>
                 </div>
                 <div className="mb-6 col-md-6">
-                  {permissions.includes("view_patient") ||
-                  permissions.includes("all_permission") ? (
+                  {hasAnyPermission("view_patient", "all_permission") ? (
                     <Link to={"register-patient"}>
                       <Button
                         variant="contained"

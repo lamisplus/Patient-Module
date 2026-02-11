@@ -4,6 +4,7 @@ import axios from "axios";
 import { url as baseUrl, token } from "../../../api";
 import { Link } from 'react-router-dom'
 import { Card,CardBody,} from 'reactstrap';
+import { usePermissions } from '../hooks/usePermissions';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from 'reactstrap';
 import Button from "@material-ui/core/Button";
 import 'react-toastify/dist/ReactToastify.css';
@@ -114,7 +115,7 @@ const useStyles = makeStyles(theme => ({
 const PatientList = (props) => {
     const classes = useStyles();
     const [patients, setPatients] = useState([]);
-    const [permissions, setPermissions] = useState([]);
+    const { hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions();
     const [loading, setLoading] = useState('');
     const [modal, setModal] = useState(false);
     const [patient, setPatient] = useState(false);
@@ -124,23 +125,6 @@ const PatientList = (props) => {
         setPatient(patient);
         setModal(!modal);
     }
-    useEffect(() => {
-        userPermission();
-      }, []);
-    //Get list of Finger index
-    const userPermission =()=>{
-        axios
-           .get(`${baseUrl}account`,
-               { headers: {"Authorization" : `Bearer ${token}`} }
-           )
-           .then((response) => {
-                setPermissions(response.data.permissions);
-
-           })
-           .catch((error) => {
-           });
-
-     }
     const loadPatients = useCallback(async () => {
         try {
             const response = await axios.get(`${baseUrl}patient`, { headers: {"Authorization" : `Bearer ${token}`} });
@@ -205,39 +189,39 @@ const PatientList = (props) => {
                icon:<FaEye  size="22"/>,
                to:{
                    pathname: "/register-patient",
-                   state: { patientId : row.id, permissions:permissions  }
+                   state: { patientId : row.id }
                }
            },
-           {...(permissions.includes('view_patient') || permissions.includes("all_permission")&&
+           {...(hasAnyPermission('view_patient', 'all_permission') &&
                    {
                        name:'Dashboard',
                        type:'link',
                        icon:<MdPerson size="20" color='rgb(4, 196, 217)' />,
                        to:{
                            pathname: "/patient-dashboard",
-                           state: { patientObj: row, permissions:permissions  }
+                           state: { patientObj: row }
                        }
                    }
            )},
-           {...(permissions.includes('edit_patient') || permissions.includes("all_permission")&&
+           {...(hasAnyPermission('edit_patient', 'all_permission') &&
                    {
                        name:'Edit',
                        type:'link',
                        icon:<MdModeEdit size="20" color='rgb(4, 196, 217)' />,
                        to:{
                            pathname: "/register-patient",
-                           state: { patientId : row.id, permissions:permissions  }
+                           state: { patientId : row.id }
                        }
                    }
                )},
-           {...(permissions.includes('delete_patient') || permissions.includes("all_permission")&&
+           {...(hasAnyPermission('delete_patient', 'all_permission') &&
                    {
                        name:'Delete',
                        type:'link',
                        icon:<MdDeleteForever size="20" color='rgb(4, 196, 217)'  />,
                        to:{
                            pathname: "/#",
-                           state: { patientObj: row, permissions:permissions  }
+                           state: { patientObj: row }
                        }
                    }
                )}
@@ -252,7 +236,7 @@ const PatientList = (props) => {
         <ToastContainer autoClose={3000} hideProgressBar />
         <Card>
             <CardBody>
-                {permissions.includes('view_patient') || permissions.includes("all_permission") ? (
+                {hasAnyPermission('view_patient', 'all_permission') ? (
                     <Link to={"register-patient"}>
                         <Button
                             variant="contained"
@@ -266,7 +250,7 @@ const PatientList = (props) => {
                     </Link>
                 ):""
                 }
-                {permissions.includes('view_patient') || permissions.includes("all_permission") ? (
+                {hasAnyPermission('view_patient', 'all_permission') ? (
                     <FormGroup className=" float-right mr-1">
                         <FormControlLabel  control={
                             <Checkbox
@@ -318,7 +302,7 @@ const PatientList = (props) => {
                             : "Not-Active",*/
                         actions:
                             <div>
-                                {permissions.includes('view_patient') || permissions.includes("all_permission") ? (
+                                {hasAnyPermission('view_patient', 'all_permission') ? (
                                     <SplitActionButton actions={actionItems(row)} />
                                 ):""
                                 }

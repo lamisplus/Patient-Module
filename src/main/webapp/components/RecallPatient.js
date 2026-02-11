@@ -17,6 +17,8 @@ import Button from '@material-ui/core/Button';
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-widgets/dist/css/react-widgets.css';
 import { FaEye, FaUserPlus } from 'react-icons/fa';
+import { usePermissions } from '../hooks/usePermissions';
+import { useUserAccount } from '../hooks/useUserAccount';
 import SaveIcon from '@material-ui/icons/Save';
 import MatButton from '@material-ui/core/Button';
 import FingerprintIcon from '@material-ui/icons/Fingerprint';
@@ -92,7 +94,8 @@ const RecallPatient = props => {
   const [fingerType, setFingerType] = useState([]);
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [permissions, setPermissions] = useState({});
+  const { hasPermission, hasAnyPermission } = usePermissions();
+  const { facilities } = useUserAccount();
   const [tryAgain, setTryAgain] = useState(false);
   const [successPims, setSuccessPims] = useState(false);
   const [errors, setErrors] = useState({});
@@ -101,7 +104,6 @@ const RecallPatient = props => {
 
   const [isNewStatus, setIsNewStatus] = useState(true);
   const [checkedVal, setCheckedVal] = useState(false);
-  const [facilities, setFacilities] = useState([]);
 
   const getPersonBiometrics = async () => {
     const fingersCodeset = await axios.get(
@@ -118,33 +120,7 @@ const RecallPatient = props => {
     setFingerType(biometricItems);
   };
 
-  const Facilities = () => {
-    axios
-      .get(`${baseUrl}account`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then(response => {
-        setFacilities(response.data.applicationUserOrganisationUnits);
-      })
-      .catch(error => {
-        //console.log(error);
-      });
-  };
-
-  const userPermission = () => {
-    axios
-      .get(`${baseUrl}account`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then(response => {
-        setPermissions(response.data.permissions);
-      })
-      .catch(error => {});
-  };
-
   useEffect(() => {
-    userPermission();
-    Facilities();
     getPersonBiometrics();
     TemplateType();
   }, []);
@@ -597,7 +573,6 @@ const RecallPatient = props => {
                                 pathname: '/patient-dashboard',
                                 state: {
                                   patientObj: props.patientDetails,
-                                  permissions: permissions,
                                 },
                               }}
                             >

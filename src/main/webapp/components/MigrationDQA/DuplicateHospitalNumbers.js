@@ -3,6 +3,7 @@ import axios from "axios";
 import {token, url as baseUrl} from "../../../../api";
 import MaterialTable from "material-table";
 import Swal from "sweetalert2";
+import { usePermissions } from "../../hooks/usePermissions";
 
 import {FaEye} from "react-icons/fa";
 import {MdDeleteForever, MdModeEdit, MdPerson} from "react-icons/md";
@@ -101,7 +102,7 @@ function DuplicateHospitalNumbers(props) {
     const tableRef = useRef(null);
     const classes = useStyles();
     const [patients, setPatients] = useState([]);
-    const [permissions, setPermissions] = useState(props.permissions);
+    const { hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions();
     const [loading, setLoading] = useState('');
     const [modal, setModal] = useState(false);
     const [patient, setPatient] = useState(false);
@@ -147,26 +148,26 @@ function DuplicateHospitalNumbers(props) {
                 icon:<FaEye  size="22"/>,
                 to:{
                     pathname: "/register-patient",
-                    state: { patientId : row.id, permissions:permissions  }
+                    state: { patientId : row.id }
                 }
             },
-            ...(permissions.includes('edit_patient') || permissions.includes("all_permission") ? [{
+            ...(hasAnyPermission('edit_patient', 'all_permission') ? [{
                 name:'Edit',
                 type:'link',
                 icon:<MdModeEdit size="20" color='rgb(4, 196, 217)' />,
                 to:{
                     pathname: "/register-patient",
-                    state: { patientId : row.id, permissions:permissions  }
+                    state: { patientId : row.id }
                 }
             }] : []),
-            ...(permissions.includes('delete_patient') || permissions.includes("all_permission") ? [{
+            ...(hasAnyPermission('delete_patient', 'all_permission') ? [{
                 name:'Delete',
                 type:'link',
                 icon:<MdDeleteForever size="20" color='rgb(4, 196, 217)'  />,
                 deleteAction: () => {handleDelete(row.id)},
                 to:{
                     pathname: "/#",
-                    state: { patientObj: row, permissions:permissions  }
+                    state: { patientObj: row }
                 }
             }] : [])
         ]
@@ -198,7 +199,7 @@ function DuplicateHospitalNumbers(props) {
                                 : calculate_age(row.dateOfBirth),
                             actions:
                                 <div>
-                                    {permissions.includes('view_patient') || permissions.includes("all_permission") ? (
+                                    {hasAnyPermission('view_patient', 'all_permission') ? (
                                         <SplitActionButton actions={actionItems(row)} />
                                     ):""
                                     }
@@ -263,7 +264,7 @@ function DuplicateHospitalNumbers(props) {
         setEnablePPI(!enablePPI)
     }
     const PPISelect = () => <div>
-        {permissions.includes('view_patient') || permissions.includes("all_permission") ? (
+        {hasAnyPermission('view_patient', 'all_permission') ? (
             <FormGroup className=" float-right mr-1">
                 <FormControlLabel  control={
                     <Checkbox
@@ -291,6 +292,7 @@ function DuplicateHospitalNumbers(props) {
         <div className={classes.root}>
             <ToastContainer autoClose={3000} hideProgressBar />
             <MaterialTable
+                key={`table-${permissionsLoading}`}
                 tableRef={tableRef}
                 /*onSearchChange={(e) => {
                     handleSearchChange(e);

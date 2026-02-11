@@ -6,6 +6,7 @@ import axios from "axios";
 import { url as baseUrl, token } from "../../../api";
 import Alert from "@mui/material/Alert";
 import swal from "sweetalert";
+import { usePermissions } from "../hooks/usePermissions";
 
 import PatientRecapture from "./PatientRecapture";
 import Recapture from "./Recapture";
@@ -61,7 +62,7 @@ const PreviousRecapture = (props) => {
   let createdDate = props.patientObj.createdDate.split("T")[0];
   let currentDate = new Date().toISOString().split("T")[0];
   const [previousCaptureDate, setPreviousCaptureDate] = useState("");
-  const [permissions, setPermissions] = useState([]);
+  const { hasPermission, hasAnyPermission } = usePermissions();
   const [recapturedFingered, setRecapturedFingered] = useState([]);
   const [fingerType, setFingerType] = useState([]);
   const [modal, setModal] = useState(false);
@@ -91,17 +92,6 @@ const PreviousRecapture = (props) => {
   const [baselineVal, setBaselineVal] = useState({});
   const [replaceDate, setReplacement] = useState(null);
 
-  const userPermission = () => {
-    axios
-      .get(`${baseUrl}account`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((response) => {
-        setPermissions(response.data.permissions);
-      })
-      .catch((error) => {});
-  };
-
   const getRecaptureCount = () => {
   
     axios
@@ -127,7 +117,6 @@ const PreviousRecapture = (props) => {
 
   useEffect(() => {
     getRecaptureCount();
-    userPermission();
   }, []);
 
   const handleChangePage = (page) => {

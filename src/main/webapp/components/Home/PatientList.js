@@ -22,6 +22,7 @@ import { ToastContainer } from "react-toastify";
 import { makeStyles } from "@material-ui/core/styles";
 import "../patient.css";
 import SplitActionButton from "../SplitActionButton";
+import { usePermissions } from "../../hooks/usePermissions";
 
 import { forwardRef } from "react";
 import AddBox from "@material-ui/icons/AddBox";
@@ -119,7 +120,7 @@ const PatientList = (props) => {
   const tableRef = useRef(null);
   const classes = useStyles();
 
-  const [permissions, setPermissions] = useState(props.permissions);
+  const { hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions();
   const [loading, setLoading] = useState("");
   const [modal, setModal] = useState(false);
   const [patient, setPatient] = useState(false);
@@ -169,41 +170,38 @@ const PatientList = (props) => {
         icon: <FaEye size="22" />,
         to: {
           pathname: "/view-patient",
-          state: { patientId: row.id, permissions: permissions },
+          state: { patientId: row.id },
         },
       },
-      {
-        ...(permissions.includes("view_patient") ||
-        permissions.includes("all_permission")
-          ? {
+      ...(hasAnyPermission("view_patient", "all_permission")
+        ? [
+            {
               name: "Dashboard",
               type: "link",
               icon: <MdPerson size="20" color="rgb(4, 196, 217)" />,
               to: {
                 pathname: "/patient-dashboard",
-                state: { patientObj: row, permissions: permissions },
+                state: { patientObj: row },
               },
-            }
-          : {}),
-      },
-      {
-        ...(permissions.includes("edit_patient") ||
-        permissions.includes("all_permission")
-          ? {
+            },
+          ]
+        : []),
+      ...(hasAnyPermission("edit_patient", "all_permission")
+        ? [
+            {
               name: "Edit",
               type: "link",
               icon: <MdModeEdit size="20" color="rgb(4, 196, 217)" />,
               to: {
                 pathname: "/register-patient",
-                state: { patientId: row.id, permissions: permissions },
+                state: { patientId: row.id },
               },
-            }
-          : {}),
-      },
-      {
-        ...(permissions.includes("delete_patient") ||
-        permissions.includes("all_permission")
-          ? {
+            },
+          ]
+        : []),
+      ...(hasAnyPermission("delete_patient", "all_permission")
+        ? [
+            {
               name: "Delete",
               type: "link",
               icon: <MdDeleteForever size="20" color="rgb(4, 196, 217)" />,
@@ -212,11 +210,11 @@ const PatientList = (props) => {
               },
               to: {
                 pathname: "/#",
-                state: { patientObj: row, permissions: permissions },
+                state: { patientObj: row },
               },
-            }
-          : {}),
-      },
+            },
+          ]
+        : []),
     ];
   }
   const handleRemoteData = (query) =>
@@ -254,8 +252,7 @@ const PatientList = (props) => {
                     : calculateAge(row.dateOfBirth),
                 actions: (
                   <div>
-                    {permissions.includes("view_patient") ||
-                    permissions.includes("all_permission") ? (
+                    {hasAnyPermission("view_patient", "all_permission") ? (
                       <SplitActionButton actions={actionItems(row)} />
                     ) : (
                       ""
@@ -310,8 +307,7 @@ const PatientList = (props) => {
   };
   const PPISelect = () => (
     <div>
-      {permissions.includes("view_patient") ||
-      permissions.includes("all_permission") ? (
+      {hasAnyPermission("view_patient", "all_permission") ? (
         <FormGroup className=" float-right mr-1">
           <FormControlLabel
             control={
@@ -343,6 +339,7 @@ const PatientList = (props) => {
     <div className={classes.root}>
       <ToastContainer autoClose={3000} hideProgressBar />
       <MaterialTable
+        key={`table-${permissionsLoading}`}
         tableRef={tableRef}
         icons={tableIcons}
         title={<PPISelect />}
