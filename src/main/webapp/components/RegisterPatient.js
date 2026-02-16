@@ -571,6 +571,7 @@ const RegisterPatient = (props) => {
 
     temp.lastName = basicInfo.lastName ? "" : "Last Name  is required.";
     temp.sexId = basicInfo.sexId ? "" : "Gender is required.";
+    temp.dob = basicInfo.dob ? "" : "Date of Birth is required.";
     temp.dateOfRegistration = basicInfo.dateOfRegistration
       ? ""
       : "Date of Registration is required.";
@@ -1090,6 +1091,11 @@ const RegisterPatient = (props) => {
                               borderRadius: "0.2rem",
                             }}
                           />
+                          {errors.dob !== "" ? (
+                            <span className={classes.error}>{errors.dob}</span>
+                          ) : (
+                            ""
+                          )}
                         </FormGroup>
                       </div>
 
