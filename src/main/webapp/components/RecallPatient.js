@@ -31,7 +31,7 @@ import { token, url as baseUrl } from '../../../api';
 
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 
 import LinearProgress from '@mui/material/LinearProgress';
 
@@ -568,31 +568,27 @@ const RecallPatient = props => {
                             )}
                           </td>
                           <td>
-                            <Link
-                              to={{
-                                pathname: '/patient-dashboard',
-                                state: {
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              className=" float-right mr-1"
+                              startIcon={<FaEye size="25" />}
+                              style={{ backgroundColor: '#014d88' }}
+                              onClick={() =>
+                                history.push('/patient-dashboard', {
                                   patientObj: props.patientDetails,
-                                },
-                              }}
+                                })
+                              }
                             >
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                className=" float-right mr-1"
-                                startIcon={<FaEye size="25" />}
-                                style={{ backgroundColor: '#014d88' }}
+                              <span
+                                style={{
+                                  textTransform: 'capitalize',
+                                  fontWeight: 'bolder',
+                                }}
                               >
-                                <span
-                                  style={{
-                                    textTransform: 'capitalize',
-                                    fontWeight: 'bolder',
-                                  }}
-                                >
-                                  Patient Records
-                                </span>
-                              </Button>
-                            </Link>
+                                Patient Records
+                              </span>
+                            </Button>
                           </td>
                         </tr>
                       ) : (

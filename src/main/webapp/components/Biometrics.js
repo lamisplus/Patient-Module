@@ -50,6 +50,7 @@ import fingerprintimage from "../images/fingerprintimage.png";
 import DeleteIcon from "@material-ui/icons/Delete";
 import UpgradeIcon from "@mui/icons-material/Upgrade";
 import _ from "lodash";
+import { usePermissions } from "../hooks/usePermissions";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -127,10 +128,7 @@ function Biometrics(props) {
   //console.log(props.age);
   const classes = useStyles();
   let history = useHistory();
-  const permissions =
-    history.location && history.location.state
-      ? history.location.state.permissions
-      : [];
+  const { hasAnyPermission } = usePermissions();
   const [biometricDevices, setbiometricDevices] = useState([]);
   const [capturedFingered, setCapturedFingered] = useState([]);
   const [prevCapturedFingered, setPrevCapturedFingered] = useState([]);
@@ -580,8 +578,7 @@ function Biometrics(props) {
     <div className={classes.root}>
       <div>
         {/* temporal update */}
-        {permissions.includes("capture_patient_biometrics") ||
-        permissions.includes("all_permission") ? (
+        {hasAnyPermission("capture_patient_biometrics", "all_permission") ? (
           <div
             style={{
               flex: "10",
@@ -1079,8 +1076,7 @@ function Biometrics(props) {
           )}
         </div>
         {/*{permissions.includes('capture_patient_biometrics')|| permissions.includes("all_permission")?*/}
-        {permissions.includes("capture_patient_biometrics") ||
-        permissions.includes("all_permission")
+        {hasAnyPermission("capture_patient_biometrics", "all_permission")
           ? ""
           : // <div
             //     style={{

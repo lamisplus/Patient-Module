@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
+import { usePermissions } from "../../hooks/usePermissions";
 import { useHistory } from "react-router-dom";
 import {
   Button,
@@ -110,10 +111,7 @@ function Index(props) {
     [history.location?.state?.patientObj]
   );
 
-  const permissions = useMemo(
-    () => history.location?.state?.permissions || [],
-    [history.location?.state?.permissions]
-  );
+  const { hasAnyPermission } = usePermissions();
 
   const [patientBiometricStatus, setPatientBiometricStatus] = useState(false);
   const [biometricsModuleInstalled, setBiometricsModuleInstalled] =
@@ -346,14 +344,12 @@ function Index(props) {
       },
       {
         menuItem:
-          (permissions.includes("view_patient_appointment") &&
-            biometricsModuleInstalled) ||
-          (permissions.includes("all_permission") && biometricsModuleInstalled)
+          hasAnyPermission("view_patient_appointment", "all_permission") &&
+          biometricsModuleInstalled
             ? "Biometrics"
             : "",
         render: () =>
-          permissions.includes("view_patient_appointment") ||
-          permissions.includes("all_permission") ? (
+          hasAnyPermission("view_patient_appointment", "all_permission") ? (
             <Tab.Pane>
               <div style={{ minHeight: 400, width: "100%" }}>
                 <Biometrics
@@ -379,7 +375,7 @@ function Index(props) {
       tableData,
       tableOptions,
       loading,
-      permissions,
+      hasAnyPermission,
       biometricsModuleInstalled,
       patientObj,
     ]
@@ -418,7 +414,6 @@ function Index(props) {
           
           <PersonDemographics
             patientObj={patientObj}
-            permissions={permissions}
             patientBiometricStatus={patientBiometricStatus}
           />
           <Card style={{ marginTop: "5px" }}>
