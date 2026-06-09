@@ -189,4 +189,38 @@
                 WHERE archived = 0;
         </sql>
     </changeSet>
+
+    <changeSet failOnError="false" author="gboyeguntaiwo" id="patientQuery-004">
+        <sql>
+            UPDATE patient_person pp
+            SET address = jsonb_set(
+                pp.address,
+                '{address}',
+                (
+                    SELECT jsonb_agg(
+                        CASE
+                            WHEN elem->>'district' !~ '^[0-9]+$'
+                                 AND elem->>'district' IS NOT NULL
+                                 AND elem->>'district' != ''
+                                 AND ou.id IS NOT NULL
+                            THEN
+                                jsonb_set(elem, '{district}', to_jsonb(ou.id::text))
+                            ELSE
+                                elem
+                        END
+                    )
+                    FROM jsonb_array_elements(pp.address->'address') AS elem
+                    LEFT JOIN base_organisation_unit ou
+                        ON LOWER(TRIM(elem->>'district')) = LOWER(TRIM(ou.name))
+                )
+            )
+            WHERE EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements(pp.address->'address') AS elem
+                WHERE elem->>'district' !~ '^[0-9]+$'
+                  AND elem->>'district' IS NOT NULL
+                  AND elem->>'district' != ''
+            );
+        </sql>
+    </changeSet>
 </databaseChangeLog>
