@@ -1,4 +1,4 @@
-package com.mattae.simal.modules.ehr.config;
+//package com.mattae.simal.modules.ehr.config;
 
 import io.github.jhipster.async.ExceptionHandlingAsyncTaskExecutor;
 import lombok.RequiredArgsConstructor;
