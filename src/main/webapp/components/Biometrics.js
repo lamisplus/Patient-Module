@@ -51,6 +51,7 @@ import DeleteIcon from "@material-ui/icons/Delete";
 import UpgradeIcon from "@mui/icons-material/Upgrade";
 import _ from "lodash";
 import { usePermissions } from "../hooks/usePermissions";
+import { getApiErrorMessage } from "../utils/apiErrors";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -155,6 +156,7 @@ function Biometrics(props) {
   const [selectedFingers, setSelectedFingers] = useState([]);
   const [imageQuality, setImageQuality] = useState(false);
   const [isNewStatus, setIsNewStatus] = useState(true);
+  const [resettingFinger, setResettingFinger] = useState("");
 
   const calculate_age = (dob) => {
     const today = new Date();
@@ -241,6 +243,7 @@ function Biometrics(props) {
   };
 
   useEffect(() => {
+    localStorage.removeItem("capturedBiometricsList");
     clear_storelist();
     getPersonBiometrics();
     TemplateType();
@@ -336,6 +339,13 @@ function Biometrics(props) {
 
     e.preventDefault();
     if (validate()) {
+      if (!devices || !devices.url) {
+        toast.error(
+          "No active fingerprint scanner is configured. Please connect a scanner or contact your administrator.",
+          { position: toast.POSITION.BOTTOM_CENTER }
+        );
+        return;
+      }
       setLoading(true);
 
       axios
@@ -390,8 +400,13 @@ function Biometrics(props) {
 
             setCapturedFingered([...capturedFingered, biometricsEnrollments]);
             //fingerType.splice(templateType, 1);
-            _.find(fingerType, { display: templateType }).captured = true;
-            setFingerType([...fingerType]);
+            setFingerType((current) =>
+              current.map((finger) =>
+                finger.display === templateType
+                  ? { ...finger, captured: true }
+                  : finger
+              )
+            );
             //setObjValues({biometricType: "FINGERPRINT", patientId:props.patientId, templateType:"", device:""});
             setObjValues({ ...objValues, templateType: "" });
             setIsNewStatus(false);
@@ -405,6 +420,13 @@ function Biometrics(props) {
         })
         .catch((error) => {
           setLoading(false);
+          toast.error(
+            getApiErrorMessage(
+              error,
+              "Unable to capture the fingerprint. Please confirm the scanner is connected and try again."
+            ),
+            { position: toast.POSITION.BOTTOM_CENTER }
+          );
         });
     }
   };
@@ -418,8 +440,11 @@ function Biometrics(props) {
         toast.success(`${finger} deleted successfully`, {
           position: toast.POSITION.BOTTOM_CENTER,
         });
-        _.find(fingerType, { display: finger }).captured = false;
-        setFingerType([...fingerType]);
+        setFingerType((current) =>
+          current.map((item) =>
+            item.display === finger ? { ...item, captured: false } : item
+          )
+        );
         let newStoredBiometrics = _.reject(storedBiometrics, {
           templateType: finger,
         });
@@ -430,9 +455,13 @@ function Biometrics(props) {
         }
       })
       .catch((error) => {
-        toast.error("Something went wrong", {
-          position: toast.POSITION.BOTTOM_CENTER,
-        });
+        toast.error(
+          getApiErrorMessage(
+            error,
+            `Unable to delete ${finger}. Please try again.`
+          ),
+          { position: toast.POSITION.BOTTOM_CENTER }
+        );
         console.log(error);
       });
   };
@@ -506,13 +535,21 @@ function Biometrics(props) {
             position: toast.POSITION.BOTTOM_CENTER,
           });
           setCapturedFingered([]);
+          localStorage.removeItem("capturedBiometricsList");
+          setIsNewStatus(true);
+          setObjValues((current) => ({
+            ...current,
+            templateType: "",
+            capturedBiometricsList: [],
+          }));
           getPersonBiometrics();
           props.updatePatientBiometricStatus(true);
         })
         .catch((error) => {
-          toast.error("Something went wrong saving biometrics", {
-            position: toast.POSITION.BOTTOM_CENTER,
-          });
+          toast.error(
+            getApiErrorMessage(error, "Something went wrong saving biometrics"),
+            { position: toast.POSITION.BOTTOM_CENTER }
+          );
           console.log(error);
         });
       // }
@@ -523,33 +560,86 @@ function Biometrics(props) {
     }
   };
 
+  const withoutFinger = (list, templateType) =>
+    (list || []).filter((item) => item.templateType !== templateType);
+
+  const removeFingerFromStoredList = (templateType) => {
+    const storedList = localStorage.getItem("capturedBiometricsList");
+    if (storedList === null) return;
+    try {
+      const remaining = withoutFinger(JSON.parse(storedList), templateType);
+      if (remaining.length === 0) {
+        localStorage.removeItem("capturedBiometricsList");
+      } else {
+        localStorage.setItem(
+          "capturedBiometricsList",
+          JSON.stringify(remaining)
+        );
+      }
+    } catch (error) {
+      localStorage.removeItem("capturedBiometricsList");
+    }
+  };
+
   const deleteTempBiometrics = (x) => {
+    const templateType = x.templateType;
+    const personId = x.patientId || props.patientId;
+    if (!templateType || resettingFinger !== "") return;
+
+    setResettingFinger(templateType);
     axios
       .delete(
-        `${baseUrl}biometrics?personId=${x.patientId}&templateType=${x.templateType}`,
+        `${baseUrl}biometrics?personId=${personId}&templateType=${templateType}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       )
-      .then((resp) => {
-        console.log(resp);
-        let deletedRecord = capturedFingered.filter(
-          (data) => data.templateType !== x.templateType
+      .then(() => {
+        setResettingFinger("");
+        const remaining = withoutFinger(capturedFingered, templateType).map(
+          (data) => ({
+            ...data,
+            capturedBiometricsList: withoutFinger(
+              data.capturedBiometricsList,
+              templateType
+            ),
+          })
         );
-        setCapturedFingered(deletedRecord);
-        toast.info(x.templateType + "captured removed successfully!");
+        setCapturedFingered(remaining);
+        setFingerType((current) =>
+          current.map((finger) =>
+            finger.display === templateType
+              ? { ...finger, captured: false }
+              : finger
+          )
+        );
+        removeFingerFromStoredList(templateType);
+        setObjValues((current) => ({
+          ...current,
+          capturedBiometricsList: withoutFinger(
+            current.capturedBiometricsList,
+            templateType
+          ),
+        }));
+        if (remaining.length === 0) {
+          setIsNewStatus(true);
+        }
+        toast.info(
+          `${templateType} capture removed. You can now rescan this finger.`,
+          { position: toast.POSITION.BOTTOM_CENTER }
+        );
       })
       .catch((error) => {
-        toast.error("Something went wrong", {
-          position: toast.POSITION.BOTTOM_CENTER,
-        });
+        setResettingFinger("");
+        toast.error(
+          getApiErrorMessage(
+            error,
+            `Unable to reset ${templateType}. Please try again.`
+          ),
+          { position: toast.POSITION.BOTTOM_CENTER }
+        );
         console.log(error);
       });
-    // let deletedRecord = capturedFingered.filter(
-    //   (data) => data.templateType !== x.templateType
-    // );
-    // setCapturedFingered(deletedRecord);
-    // console.log("deleted temp");
   };
 
   const getFingerprintsQuality = (imageQuality) => {
@@ -781,6 +871,7 @@ function Biometrics(props) {
                 <List celled horizontal>
                   {capturedFingered.map((x) => (
                     <List.Item
+                      key={x.templateType}
                       style={{
                         width: "200px",
                         height: "200px",
@@ -848,8 +939,11 @@ function Biometrics(props) {
                               deleteTempBiometrics(x);
                             }}
                             startIcon={<RestartAltIcon />}
+                            disabled={resettingFinger !== ""}
                           >
-                            Reset Finger
+                            {resettingFinger === x.templateType
+                              ? "Resetting..."
+                              : "Reset Finger"}
                           </MatButton>
                         ) : (
                           " "
