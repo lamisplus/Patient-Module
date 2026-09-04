@@ -25,6 +25,13 @@ import FingerprintIcon from '@material-ui/icons/Fingerprint';
 import { Button2, Icon, List } from 'semantic-ui-react';
 import { ToastContainer, toast } from 'react-toastify';
 import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import {
+  getApiErrorMessage,
+  getPimsErrorAlert,
+  getPimsResponseAlert,
+  PIMS_NOT_CONFIGURED_TITLE,
+} from '../utils/apiErrors';
 
 import axios from 'axios';
 import { token, url as baseUrl } from '../../../api';
@@ -104,6 +111,7 @@ const RecallPatient = props => {
 
   const [isNewStatus, setIsNewStatus] = useState(true);
   const [checkedVal, setCheckedVal] = useState(false);
+  const [statusAlert, setStatusAlert] = useState(null);
 
   const getPersonBiometrics = async () => {
     const fingersCodeset = await axios.get(
@@ -124,6 +132,12 @@ const RecallPatient = props => {
     getPersonBiometrics();
     TemplateType();
   }, []);
+
+  useEffect(() => {
+    if (!props.modal) {
+      setStatusAlert(null);
+    }
+  }, [props.modal]);
 
   const TemplateType = () => {
     axios
@@ -202,9 +216,92 @@ const RecallPatient = props => {
       });
   };
 
+  const facilityId =
+    facilities && facilities.length > 0
+      ? facilities[0].organisationUnitId
+      : null;
+
+  const noFacilityAlert = {
+    severity: 'error',
+    title: PIMS_NOT_CONFIGURED_TITLE,
+    message:
+      'No facility is linked to your user account, so PIMS verification cannot be carried out. Please contact your administrator.',
+  };
+
+  const readyForPims = () => {
+    if (!facilityId) {
+      setStatusAlert(noFacilityAlert);
+      return false;
+    }
+    if (!objValues.templateType) {
+      setStatusAlert({
+        severity: 'warning',
+        title: 'Select a finger first',
+        message:
+          'PIMS needs to know which finger is being scanned. Please choose a finger from the list before scanning.',
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const verifyWithPims = capturedFinger => {
+    setSuccessPims(true);
+    props.setPimsEnrollment([]);
+    const pimsData = {
+      facilityId: facilityId,
+      finger: capturedFinger.template,
+      index: fingerIndex,
+    };
+    axios
+      .post(`${baseUrl}pims/verify/${facilityId}`, pimsData, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(response => {
+        setSuccessPims(false);
+        if (response.data && response.data.code === 5) {
+          props.setPimsEnrollment(response.data.enrollments || []);
+          toast.info(`PIMS MESSAGE: ${response.data.message}`, {
+            position: toast.POSITION.TOP_CENTER,
+            autoClose: 10000,
+          });
+          return;
+        }
+        const alert = getPimsResponseAlert(response.data);
+        setStatusAlert(alert);
+        toast.warning(alert.message, {
+          position: toast.POSITION.TOP_CENTER,
+          autoClose: 10000,
+        });
+      })
+      .catch(error => {
+        setSuccessPims(false);
+        const alert = getPimsErrorAlert(error);
+        setStatusAlert(alert);
+        toast.error(alert.message, {
+          position: toast.POSITION.TOP_CENTER,
+          autoClose: 10000,
+        });
+        console.error(error);
+      });
+  };
+
   const captureFinger = e => {
     e.preventDefault();
     if (validate()) {
+      setStatusAlert(null);
+      if (!devices || !devices.url) {
+        setStatusAlert({
+          severity: 'error',
+          title: 'No fingerprint scanner available',
+          message:
+            'No active fingerprint scanner is configured on this workstation. Please connect a scanner or contact your administrator.',
+        });
+        return;
+      }
+      if (checkedVal && !readyForPims()) {
+        return;
+      }
       setLoading(true);
       props.setPatientDetails(null);
       axios
@@ -226,56 +323,50 @@ const RecallPatient = props => {
             setLoading(false);
             setTryAgain(true);
             toast.error(response.data.message.ERROR);
+            setStatusAlert({
+              severity: 'error',
+              title: 'Fingerprint scan failed',
+              message: response.data.message.ERROR,
+            });
             setIsNewStatus(false);
           } else if (response.data.type === 'WARNING') {
             const templateType = response.data.templateType;
             toast.warning(response.data.message.WARNING);
+            setStatusAlert({
+              severity: 'warning',
+              title: 'Fingerprint scan warning',
+              message: response.data.message.WARNING,
+            });
           } else if (response.data.type === 'SUCCESS') {
             let capturedFinger = response.data;
 
-            let facilityId = facilities[0].organisationUnitId;
-
             if (checkedVal === true) {
-              setSuccessPims(true);
-              props.setPimsEnrollment([]);
-              let pimsData = {
-                facilityId: facilityId,
-                finger: capturedFinger.template,
-                index: fingerIndex,
-              };
-              // console.log(checkedVal);
-              axios
-                .post(`${baseUrl}pims/verify/${facilityId}`, pimsData, {
-                  headers: { Authorization: `Bearer ${token}` },
-                })
-                .then(response => {
-                  setSuccessPims(false);
-                  setCheckedVal(false);
-                  if (response.data.code === 5) {
-                    props.setPimsEnrollment(response.data.enrollments);
-                    toast.info(`PIMS MESSAGE: ${response.data.message}`, {
-                      position: toast.POSITION.TOP_CENTER,
-                      autoClose: 10000,
-                    });
-                  }
-                })
-                .catch(error => {
-                  setSuccessPims(false);
-                  console.error(error);
-                });
+              verifyWithPims(capturedFinger);
             } else {
-              if (
-                capturedFinger.clientIdentificationDTO.messageType ===
-                'SUCCESS_NO_MATCH_FOUND'
+              const identification = capturedFinger.clientIdentificationDTO;
+              if (!identification) {
+                setStatusAlert({
+                  severity: 'warning',
+                  title: 'No client record returned',
+                  message:
+                    'The fingerprint was scanned but the server did not return any client record. Please rescan or try another finger.',
+                });
+              } else if (
+                identification.messageType === 'SUCCESS_NO_MATCH_FOUND'
               ) {
-                toast.info(capturedFinger.clientIdentificationDTO.message, {
+                toast.info(identification.message, {
                   position: toast.POSITION.TOP_CENTER,
                   autoClose: 10000,
                 });
+                setStatusAlert({
+                  severity: 'info',
+                  title: 'No matching client found',
+                  message: identification.message,
+                });
               } else {
-                getPatient(capturedFinger.clientIdentificationDTO.id);
+                getPatient(identification.id);
 
-                toast.success(capturedFinger.clientIdentificationDTO.message, {
+                toast.success(identification.message, {
                   position: toast.POSITION.TOP_CENTER,
                   autoClose: 10000,
                 });
@@ -287,17 +378,35 @@ const RecallPatient = props => {
             toast.error('Something went wrong capturing biometrics...', {
               position: toast.POSITION.TOP_CENTER,
             });
+            setStatusAlert({
+              severity: 'error',
+              title: 'Fingerprint scan failed',
+              message:
+                'Something went wrong capturing biometrics. Please rescan the finger and try again.',
+            });
           }
         })
         .catch(error => {
           setLoading(false);
+          const message = getApiErrorMessage(
+            error,
+            'Unable to scan the fingerprint. Please confirm the scanner is connected and try again.'
+          );
+          setStatusAlert({
+            severity: 'error',
+            title: 'Fingerprint scan failed',
+            message: message,
+          });
+          toast.error(message, { position: toast.POSITION.TOP_CENTER });
+          console.error(error);
         });
     }
   };
 
   const handleChange = e => {
-    console.error(e);
-    setCheckedVal(!checkedVal);
+    const checked = e.target.checked;
+    setCheckedVal(checked);
+    setStatusAlert(checked && !facilityId ? noFacilityAlert : null);
   };
 
   return (
@@ -336,6 +445,20 @@ const RecallPatient = props => {
                     </Alert>
                     <br />
                   </Col>
+                  {statusAlert ? (
+                    <Col md={12}>
+                      <Alert
+                        severity={statusAlert.severity}
+                        onClose={() => setStatusAlert(null)}
+                      >
+                        <AlertTitle>{statusAlert.title}</AlertTitle>
+                        {statusAlert.message}
+                      </Alert>
+                      <br />
+                    </Col>
+                  ) : (
+                    ''
+                  )}
                   {/* <Col md={1}>
                     <FormGroup>
                       <Label
@@ -542,7 +665,7 @@ const RecallPatient = props => {
                   <Table striped bordered hover>
                     <tbody>
                       {props.patientDetails !== null &&
-                      props.pimsEnrollment.length === 0 ? (
+                      (props.pimsEnrollment || []).length === 0 ? (
                         <tr>
                           <td>
                             <b>Registration Date: </b>
@@ -594,7 +717,7 @@ const RecallPatient = props => {
                       ) : (
                         props.pimsEnrollment &&
                         props.pimsEnrollment.map(pims => (
-                          <tr>
+                          <tr key={pims.patientIdentifier}>
                             <td>
                               <b>Art Start Date: </b>
                               {pims.artStartDate}
