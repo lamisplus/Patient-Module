@@ -468,12 +468,18 @@ function Biometrics(props) {
         }
       )
       .then((resp) => {
-       
+        setFingerType((current) =>
+          current.map((finger) =>
+            finger.display === x.templateType
+              ? { ...finger, captured: false }
+              : finger
+          )
+        );
         let deletedRecord = capturedFingered.filter(
           (data) => data.templateType !== x.templateType
         );
         setCapturedFingered(deletedRecord);
-        toast.info(x.templateType + "captured removed successfully!");
+        toast.info(x.templateType + " captured removed successfully!");
         // toast.success(`finger deleted successfully`, {
         //   position: toast.POSITION.BOTTOM_CENTER,
         // });

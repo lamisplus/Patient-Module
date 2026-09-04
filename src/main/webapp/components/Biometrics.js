@@ -156,7 +156,6 @@ function Biometrics(props) {
   const [selectedFingers, setSelectedFingers] = useState([]);
   const [imageQuality, setImageQuality] = useState(false);
   const [isNewStatus, setIsNewStatus] = useState(true);
-  const [resettingFinger, setResettingFinger] = useState("");
 
   const calculate_age = (dob) => {
     const today = new Date();
@@ -581,60 +580,59 @@ function Biometrics(props) {
     }
   };
 
-  const deleteTempBiometrics = (x) => {
-    const templateType = x.templateType;
-    const personId = x.patientId || props.patientId;
-    if (!templateType || resettingFinger !== "") return;
+  const releaseCapturedFinger = (templateType) => {
+    const remaining = withoutFinger(capturedFingered, templateType).map(
+      (data) => ({
+        ...data,
+        capturedBiometricsList: withoutFinger(
+          data.capturedBiometricsList,
+          templateType
+        ),
+      })
+    );
+    setCapturedFingered(remaining);
+    setFingerType((current) =>
+      current.map((finger) =>
+        finger.display === templateType
+          ? { ...finger, captured: false }
+          : finger
+      )
+    );
+    removeFingerFromStoredList(templateType);
+    setObjValues((current) => ({
+      ...current,
+      capturedBiometricsList: withoutFinger(
+        current.capturedBiometricsList,
+        templateType
+      ),
+    }));
+    if (remaining.length === 0) {
+      setIsNewStatus(true);
+    }
+  };
 
-    setResettingFinger(templateType);
+  const deleteTempBiometrics = (x) => {
+    const templateType = x && x.templateType;
+    const personId = (x && x.patientId) || props.patientId;
+    if (!templateType) return;
+
+    releaseCapturedFinger(templateType);
+    toast.info(templateType + " captured removed successfully!");
+
     axios
       .delete(
-        `${baseUrl}biometrics?personId=${personId}&templateType=${templateType}`,
+        `${baseUrl}biometrics?personId=${personId}&templateType=${encodeURIComponent(
+          templateType
+        )}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       )
-      .then(() => {
-        setResettingFinger("");
-        const remaining = withoutFinger(capturedFingered, templateType).map(
-          (data) => ({
-            ...data,
-            capturedBiometricsList: withoutFinger(
-              data.capturedBiometricsList,
-              templateType
-            ),
-          })
-        );
-        setCapturedFingered(remaining);
-        setFingerType((current) =>
-          current.map((finger) =>
-            finger.display === templateType
-              ? { ...finger, captured: false }
-              : finger
-          )
-        );
-        removeFingerFromStoredList(templateType);
-        setObjValues((current) => ({
-          ...current,
-          capturedBiometricsList: withoutFinger(
-            current.capturedBiometricsList,
-            templateType
-          ),
-        }));
-        if (remaining.length === 0) {
-          setIsNewStatus(true);
-        }
-        toast.info(
-          `${templateType} capture removed. You can now rescan this finger.`,
-          { position: toast.POSITION.BOTTOM_CENTER }
-        );
-      })
       .catch((error) => {
-        setResettingFinger("");
         toast.error(
           getApiErrorMessage(
             error,
-            `Unable to reset ${templateType}. Please try again.`
+            `${templateType} could not be cleared on the server. Please rescan it before saving.`
           ),
           { position: toast.POSITION.BOTTOM_CENTER }
         );
@@ -939,11 +937,8 @@ function Biometrics(props) {
                               deleteTempBiometrics(x);
                             }}
                             startIcon={<RestartAltIcon />}
-                            disabled={resettingFinger !== ""}
                           >
-                            {resettingFinger === x.templateType
-                              ? "Resetting..."
-                              : "Reset Finger"}
+                            Reset Finger
                           </MatButton>
                         ) : (
                           " "
