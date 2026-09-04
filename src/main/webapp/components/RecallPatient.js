@@ -28,8 +28,9 @@ import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import {
   getApiErrorMessage,
+  getPimsConfigAlert,
   getPimsErrorAlert,
-  getPimsResponseAlert,
+  getResponseMessage,
   PIMS_NOT_CONFIGURED_TITLE,
 } from '../utils/apiErrors';
 
@@ -234,12 +235,10 @@ const RecallPatient = props => {
       return false;
     }
     if (!objValues.templateType) {
-      setStatusAlert({
-        severity: 'warning',
-        title: 'Select a finger first',
-        message:
-          'PIMS needs to know which finger is being scanned. Please choose a finger from the list before scanning.',
-      });
+      toast.warning(
+        'Please select the finger being scanned before running a PIMS check.',
+        { position: toast.POSITION.TOP_CENTER }
+      );
       return false;
     }
     return true;
@@ -259,25 +258,36 @@ const RecallPatient = props => {
       })
       .then(response => {
         setSuccessPims(false);
-        if (response.data && response.data.code === 5) {
-          props.setPimsEnrollment(response.data.enrollments || []);
-          toast.info(`PIMS MESSAGE: ${response.data.message}`, {
+        const data = response.data || {};
+        if (data.code === 5) {
+          props.setPimsEnrollment(data.enrollments || []);
+          toast.info(`PIMS MESSAGE: ${data.message}`, {
             position: toast.POSITION.TOP_CENTER,
             autoClose: 10000,
           });
           return;
         }
-        const alert = getPimsResponseAlert(response.data);
-        setStatusAlert(alert);
-        toast.warning(alert.message, {
-          position: toast.POSITION.TOP_CENTER,
-          autoClose: 10000,
-        });
+        const configAlert = getPimsConfigAlert(data);
+        if (configAlert) {
+          setStatusAlert(configAlert);
+          toast.error(configAlert.message, {
+            position: toast.POSITION.TOP_CENTER,
+            autoClose: 10000,
+          });
+          return;
+        }
+        toast.info(
+          getResponseMessage(data) ||
+            'PIMS could not identify this client. Please rescan or try another finger.',
+          { position: toast.POSITION.TOP_CENTER, autoClose: 10000 }
+        );
       })
       .catch(error => {
         setSuccessPims(false);
         const alert = getPimsErrorAlert(error);
-        setStatusAlert(alert);
+        if (alert.configuration) {
+          setStatusAlert(alert);
+        }
         toast.error(alert.message, {
           position: toast.POSITION.TOP_CENTER,
           autoClose: 10000,
@@ -291,12 +301,10 @@ const RecallPatient = props => {
     if (validate()) {
       setStatusAlert(null);
       if (!devices || !devices.url) {
-        setStatusAlert({
-          severity: 'error',
-          title: 'No fingerprint scanner available',
-          message:
-            'No active fingerprint scanner is configured on this workstation. Please connect a scanner or contact your administrator.',
-        });
+        toast.error(
+          'No active fingerprint scanner is configured on this workstation. Please connect a scanner or contact your administrator.',
+          { position: toast.POSITION.TOP_CENTER }
+        );
         return;
       }
       if (checkedVal && !readyForPims()) {
@@ -323,20 +331,10 @@ const RecallPatient = props => {
             setLoading(false);
             setTryAgain(true);
             toast.error(response.data.message.ERROR);
-            setStatusAlert({
-              severity: 'error',
-              title: 'Fingerprint scan failed',
-              message: response.data.message.ERROR,
-            });
             setIsNewStatus(false);
           } else if (response.data.type === 'WARNING') {
             const templateType = response.data.templateType;
             toast.warning(response.data.message.WARNING);
-            setStatusAlert({
-              severity: 'warning',
-              title: 'Fingerprint scan warning',
-              message: response.data.message.WARNING,
-            });
           } else if (response.data.type === 'SUCCESS') {
             let capturedFinger = response.data;
 
@@ -345,23 +343,16 @@ const RecallPatient = props => {
             } else {
               const identification = capturedFinger.clientIdentificationDTO;
               if (!identification) {
-                setStatusAlert({
-                  severity: 'warning',
-                  title: 'No client record returned',
-                  message:
-                    'The fingerprint was scanned but the server did not return any client record. Please rescan or try another finger.',
-                });
+                toast.error(
+                  'The fingerprint was scanned but no client record was returned. Please rescan or try another finger.',
+                  { position: toast.POSITION.TOP_CENTER, autoClose: 10000 }
+                );
               } else if (
                 identification.messageType === 'SUCCESS_NO_MATCH_FOUND'
               ) {
                 toast.info(identification.message, {
                   position: toast.POSITION.TOP_CENTER,
                   autoClose: 10000,
-                });
-                setStatusAlert({
-                  severity: 'info',
-                  title: 'No matching client found',
-                  message: identification.message,
                 });
               } else {
                 getPatient(identification.id);
@@ -375,29 +366,22 @@ const RecallPatient = props => {
           } else {
             setLoading(false);
             setTryAgain(true);
-            toast.error('Something went wrong capturing biometrics...', {
-              position: toast.POSITION.TOP_CENTER,
-            });
-            setStatusAlert({
-              severity: 'error',
-              title: 'Fingerprint scan failed',
-              message:
-                'Something went wrong capturing biometrics. Please rescan the finger and try again.',
-            });
+            toast.error(
+              getResponseMessage(response.data) ||
+                'Something went wrong capturing biometrics...',
+              { position: toast.POSITION.TOP_CENTER }
+            );
           }
         })
         .catch(error => {
           setLoading(false);
-          const message = getApiErrorMessage(
-            error,
-            'Unable to scan the fingerprint. Please confirm the scanner is connected and try again.'
+          toast.error(
+            getApiErrorMessage(
+              error,
+              'Unable to scan the fingerprint. Please confirm the scanner is connected and try again.'
+            ),
+            { position: toast.POSITION.TOP_CENTER }
           );
-          setStatusAlert({
-            severity: 'error',
-            title: 'Fingerprint scan failed',
-            message: message,
-          });
-          toast.error(message, { position: toast.POSITION.TOP_CENTER });
           console.error(error);
         });
     }

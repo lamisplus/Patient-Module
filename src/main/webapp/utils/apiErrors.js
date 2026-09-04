@@ -20,6 +20,8 @@ const readServerMessage = (data) => {
   return "";
 };
 
+export const getResponseMessage = (data) => readServerMessage(data);
+
 export const getServerMessage = (error) =>
   readServerMessage(error && error.response ? error.response.data : null);
 
@@ -62,6 +64,7 @@ export const getApiErrorMessage = (
 const notConfiguredAlert = (message) => ({
   severity: "error",
   title: PIMS_NOT_CONFIGURED_TITLE,
+  configuration: true,
   message,
 });
 
@@ -95,23 +98,16 @@ export const getPimsErrorAlert = (error) => {
   return {
     severity: "warning",
     title: "PIMS could not verify this fingerprint",
+    configuration: false,
     message:
       serverMessage || "PIMS rejected the request. Please rescan the finger and try again.",
   };
 };
 
-export const getPimsResponseAlert = (data) => {
+export const getPimsConfigAlert = (data) => {
   const message = readServerMessage(data);
-  if (CONFIGURATION_HINTS.test(message)) {
-    return notConfiguredAlert(
-      `${message}. Please ask your administrator to review the PIMS setup.`
-    );
-  }
-  return {
-    severity: "warning",
-    title: "No PIMS record found",
-    message:
-      message ||
-      "PIMS did not return any enrolment for this fingerprint. Please rescan or try another finger.",
-  };
+  if (!CONFIGURATION_HINTS.test(message)) return null;
+  return notConfiguredAlert(
+    `${message}. Please ask your administrator to review the PIMS setup.`
+  );
 };
