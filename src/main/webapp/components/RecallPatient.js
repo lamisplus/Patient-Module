@@ -113,6 +113,7 @@ const RecallPatient = props => {
   const [isNewStatus, setIsNewStatus] = useState(true);
   const [checkedVal, setCheckedVal] = useState(false);
   const [statusAlert, setStatusAlert] = useState(null);
+  const [autoScan, setAutoScan] = useState(true);
 
   const getPersonBiometrics = async () => {
     const fingersCodeset = await axios.get(
@@ -216,6 +217,86 @@ const RecallPatient = props => {
         console.error(error);
       });
   };
+
+  const applyIdentification = identification => {
+    if (!identification) {
+      toast.error(
+        'The fingerprint was scanned but no client record was returned. Please rescan or try another finger.',
+        { position: toast.POSITION.TOP_CENTER, autoClose: 10000 }
+      );
+      return;
+    }
+    if (identification.messageType === 'SUCCESS_NO_MATCH_FOUND') {
+      toast.info(identification.message, {
+        position: toast.POSITION.TOP_CENTER,
+        autoClose: 10000,
+      });
+      return;
+    }
+    getPatient(identification.id);
+    toast.success(identification.message, {
+      position: toast.POSITION.TOP_CENTER,
+      autoClose: 10000,
+    });
+  };
+
+  const monitorUrl =
+    devices && devices.url && devices.url.indexOf('/enrollment') > -1
+      ? devices.url.replace(/\/enrollment.*$/, '/neurotec/monitor/identify')
+      : null;
+
+  const watching =
+    props.modal &&
+    autoScan &&
+    !checkedVal &&
+    !loading &&
+    !!monitorUrl &&
+    !!(devices && devices.name) &&
+    props.patientDetails === null;
+
+  useEffect(() => {
+    if (!watching) {
+      return undefined;
+    }
+    let stopped = false;
+    const source = axios.CancelToken.source();
+
+    const listen = async () => {
+      while (!stopped) {
+        try {
+          const response = await axios.get(
+            `${monitorUrl}?reader=${encodeURIComponent(
+              devices.name
+            )}&timeoutMillis=15000`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+              cancelToken: source.token,
+            }
+          );
+          if (stopped) {
+            return;
+          }
+          if (response.status === 204 || !response.data) {
+            continue;
+          }
+          applyIdentification(response.data);
+          return;
+        } catch (error) {
+          if (!stopped && !axios.isCancel(error)) {
+            console.error(error);
+          }
+          return;
+        }
+      }
+    };
+    listen();
+
+    return () => {
+      stopped = true;
+      source.cancel();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watching, monitorUrl, devices && devices.name]);
 
   const facilityId =
     facilities && facilities.length > 0
@@ -341,27 +422,7 @@ const RecallPatient = props => {
             if (checkedVal === true) {
               verifyWithPims(capturedFinger);
             } else {
-              const identification = capturedFinger.clientIdentificationDTO;
-              if (!identification) {
-                toast.error(
-                  'The fingerprint was scanned but no client record was returned. Please rescan or try another finger.',
-                  { position: toast.POSITION.TOP_CENTER, autoClose: 10000 }
-                );
-              } else if (
-                identification.messageType === 'SUCCESS_NO_MATCH_FOUND'
-              ) {
-                toast.info(identification.message, {
-                  position: toast.POSITION.TOP_CENTER,
-                  autoClose: 10000,
-                });
-              } else {
-                getPatient(identification.id);
-
-                toast.success(identification.message, {
-                  position: toast.POSITION.TOP_CENTER,
-                  autoClose: 10000,
-                });
-              }
+              applyIdentification(capturedFinger.clientIdentificationDTO);
             }
           } else {
             setLoading(false);
@@ -589,6 +650,30 @@ const RecallPatient = props => {
                   </Col>
 
                   <Col md={3}>
+                    <Label
+                      check
+                      style={{
+                        color: '#014d88',
+                        fontWeight: 'bold',
+                        fontSize: '18px',
+                      }}
+                    >
+                      Auto scan
+                    </Label>
+                    <br />
+                    <Input
+                      type="checkbox"
+                      checked={autoScan}
+                      disabled={checkedVal}
+                      onChange={() => setAutoScan(!autoScan)}
+                      style={{
+                        border: '1px solid #014D88',
+                        borderRadius: '0.2rem',
+                      }}
+                    />
+                  </Col>
+
+                  <Col md={3}>
                     {!loading ? (
                       <>
                         <MatButton
@@ -621,6 +706,16 @@ const RecallPatient = props => {
                     )}
                   </Col>
                   <br />
+                  <Col md={12}>
+                    {watching ? (
+                      <>
+                        <b>Waiting for a finger on the scanner...</b>
+                        <LinearProgress />
+                      </>
+                    ) : (
+                      ''
+                    )}
+                  </Col>
                   <Col md={12}>
                     {checkedVal && loading ? (
                       <>
