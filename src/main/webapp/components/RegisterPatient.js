@@ -60,7 +60,7 @@ const useStyles = makeStyles((theme) => ({
       fontWeight: "bold",
     },
     "& .form-control": {
-      borderRadius: "0.25rem",
+      borderRadius: "0.2rem",
       height: "41px",
     },
     "& .card-header:first-child": {
@@ -108,7 +108,6 @@ const CODESET_KEYS = [
 const RegisterPatient = (props) => {
   const { getOptions } = useCodesets(CODESET_KEYS);
 
-  // Initial state for basic info
   const initialBasicInfo = {
     active: true,
     streetAddress: "",
@@ -176,7 +175,6 @@ const RegisterPatient = (props) => {
 
   const toggle = () => setOpen(!open);
 
-  // Date validation function
   const validateDateOfRegistration = (registrationDate, birthDate) => {
     if (!registrationDate || !birthDate) return true;
     const regDate = moment(registrationDate);
@@ -184,7 +182,6 @@ const RegisterPatient = (props) => {
     return regDate.isSameOrAfter(dob);
   };
 
-  // Load states by parent ID
   const loadOrganisationUnitsByParentId = async (parentId) => {
     try {
       const response = await axios.get(
@@ -198,7 +195,6 @@ const RegisterPatient = (props) => {
     }
   };
 
-  // Load states for a specific state ID
   const loadState = async (stateId) => {
     if (!stateId) return;
     try {
@@ -212,7 +208,6 @@ const RegisterPatient = (props) => {
     }
   };
 
-  // Calculate age from date of birth
   const calculateAge = (dob) => {
     if (!dob) return "";
     const today = new Date();
@@ -228,7 +223,6 @@ const RegisterPatient = (props) => {
     return age < 0 ? "" : age;
   };
 
-  // Format phone number
   const formatPhoneNumber = (phone) => {
     if (!phone || typeof phone?.value !== "string") return phone;
     if (phone.value.charAt(0) === "0") {
@@ -237,7 +231,6 @@ const RegisterPatient = (props) => {
     return phone;
   };
 
-  // Get patient data
   const getPatient = useCallback(async () => {
     if (!patientId || getOptions("SEX").length === 0) return;
 
@@ -281,9 +274,11 @@ const RegisterPatient = (props) => {
         await loadState(country.stateId);
       }
 
+      const rawHospitalNum = hospitalNumber?.value || "";
+
       const basicInfoData = {
         ...initialBasicInfo,
-        hospitalNumber: hospitalNumber?.value || "",
+        hospitalNumber: rawHospitalNum,
         firstName: patient.firstName || "",
         lastName: patient.surname || "",
         otherName: patient.otherName || "",
@@ -306,14 +301,14 @@ const RegisterPatient = (props) => {
       };
 
       setBasicInfo(basicInfoData);
-      setHospitalNumStatus(true); // Enable save for edit mode
+      // Valid if hospital number contains at least one digit and is non-empty
+      setHospitalNumStatus(/\d/.test(rawHospitalNum));
     } catch (error) {
       console.error("Error fetching patient:", error);
       toast.error("Failed to load patient data");
     }
   }, [patientId, getOptions]);
 
-  // Load countries
   const loadCountries = useCallback(async () => {
     try {
       const response = await axios.get(
@@ -326,7 +321,6 @@ const RegisterPatient = (props) => {
     }
   }, []);
 
-  // Load states for country (default: Nigeria - ID 1)
   const loadStates = useCallback(async () => {
     try {
       const response = await axios.get(
@@ -339,7 +333,6 @@ const RegisterPatient = (props) => {
     }
   }, []);
 
-  // Handler: Country change
   const handleCountryChange = async (e) => {
     const countryId = e.target.value;
     setBasicInfo((prev) => ({ ...prev, countryId }));
@@ -359,7 +352,6 @@ const RegisterPatient = (props) => {
     }
   };
 
-  // Handler: State change
   const handleStateChange = async (e) => {
     const stateId = e.target.value;
     setBasicInfo((prev) => ({ ...prev, stateId, district: "" }));
@@ -377,7 +369,6 @@ const RegisterPatient = (props) => {
     }
   };
 
-  // Handler: Date of Birth change
   const handleDobChange = (e) => {
     const dob = e.target.value;
     const age = calculateAge(dob);
@@ -388,13 +379,11 @@ const RegisterPatient = (props) => {
       age: age.toString(),
     }));
 
-    // Check age validation
     if (age >= 60) {
       toggle();
     }
   };
 
-  // Handler: Date of Birth type change (Actual/Estimated)
   const handleDateOfBirthTypeChange = (e) => {
     setAgeDisabled(e.target.value !== "Estimated");
     setBasicInfo((prev) => ({
@@ -404,7 +393,6 @@ const RegisterPatient = (props) => {
     }));
   };
 
-  // Handler: Age change
   const handleAgeChange = (e) => {
     const ageNumber = e.target.value.replace(/\D/g, "");
     if (!ageDisabled && ageNumber) {
@@ -427,56 +415,25 @@ const RegisterPatient = (props) => {
     }
   };
 
-  // Handler: Input changes with validation
-  const handleInputChangeBasic = (e) => {
-    const { name, value } = e.target;
-    let processedValue = value;
+  // Verifies format & uniqueness
+  const checkHospitalNumberUniqueness = async (hospitalNumber) => {
+    const trimmedNumber = hospitalNumber ? hospitalNumber.trim() : "";
 
-    // Alphabet only for name fields
-    if (["firstName", "lastName", "middleName"].includes(name)) {
-      processedValue = value.replace(/[^a-z]/gi, "");
-    }
-
-    // Numbers only for NIN
-    if (name === "ninNumber") {
-      processedValue = value.replace(/\D/g, "").slice(0, 11);
-    }
-
-    // Handle hospital number uniqueness
-    if (name === "hospitalNumber" && value) {
-      checkHospitalNumberUniqueness(value);
-    }
-
-    // Handle date of registration - validate against DOB
-    if (name === "dateOfRegistration") {
-      setBasicInfo((prev) => ({ ...prev, [name]: value }));
-
-      // Validate date of registration against date of birth
-      if (basicInfo.dob && !validateDateOfRegistration(value, basicInfo.dob)) {
-        toast.error(
-          "Date of Registration cannot be earlier than Date of Birth",
-        );
-        setErrors((prev) => ({
-          ...prev,
-          dateOfRegistration:
-            "Date of Registration must be same or later than Date of Birth",
-        }));
-        return;
-      } else {
-        setErrors((prev) => ({ ...prev, dateOfRegistration: "" }));
-      }
+    // Must not be empty and MUST contain at least one digit
+    if (!trimmedNumber || !/\d/.test(trimmedNumber)) {
+      setHospitalNumStatus(false);
+      setErrors((prev) => ({
+        ...prev,
+        hospitalNumber:
+          "Hospital Number must contain numbers (e.g. /09 instead of /)",
+      }));
       return;
     }
 
-    setBasicInfo((prev) => ({ ...prev, [name]: processedValue }));
-  };
-
-  // Check hospital number uniqueness
-  const checkHospitalNumberUniqueness = async (hospitalNumber) => {
     try {
       const response = await axios.post(
         `${baseUrl}patient/exist/hospital-number`,
-        hospitalNumber,
+        trimmedNumber,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -501,13 +458,70 @@ const RegisterPatient = (props) => {
     }
   };
 
-  // Handler: Phone number change
+  const handleInputChangeBasic = (e) => {
+    const { name, value } = e.target;
+    let processedValue = value;
+
+    if (["firstName", "lastName", "middleName"].includes(name)) {
+      processedValue = value.replace(/[^a-z]/gi, "");
+    }
+
+    if (name === "ninNumber") {
+      processedValue = value.replace(/\D/g, "").slice(0, 11);
+    }
+
+    if (name === "hospitalNumber") {
+      // If empty or purely non-numeric characters, invalidate immediately
+      if (!value.trim() || !/\d/.test(value)) {
+        setHospitalNumStatus(false);
+        setErrors((prev) => ({
+          ...prev,
+          hospitalNumber:
+            "Hospital Number must contain numbers (e.g. /09 instead of /)",
+        }));
+      } else {
+        checkHospitalNumberUniqueness(value);
+      }
+    }
+
+    if (name === "dateOfRegistration") {
+      setBasicInfo((prev) => ({ ...prev, [name]: value }));
+
+      if (basicInfo.dob && !validateDateOfRegistration(value, basicInfo.dob)) {
+        toast.error(
+          "Date of Registration cannot be earlier than Date of Birth",
+        );
+        setErrors((prev) => ({
+          ...prev,
+          dateOfRegistration:
+            "Date of Registration must be same or later than Date of Birth",
+        }));
+        return;
+      } else {
+        setErrors((prev) => ({ ...prev, dateOfRegistration: "" }));
+      }
+      return;
+    }
+
+    setBasicInfo((prev) => ({ ...prev, [name]: processedValue }));
+  };
+
   const handlePhoneChange = (e, fieldName) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 11);
     setBasicInfo((prev) => ({ ...prev, [fieldName]: value }));
+
+    if (fieldName === "phoneNumber") {
+      if (value.length !== 11) {
+        setErrors((prev) => ({
+          ...prev,
+          phoneNumber: "Phone number must be exactly 11 digits",
+        }));
+      } else {
+        setErrors((prev) => ({ ...prev, phoneNumber: "" }));
+      }
+    }
   };
 
-  // Validate relatives
   const validateRelatives = () => {
     const temp = { ...errors };
     temp.firstName = relatives.firstName ? "" : "First Name is required";
@@ -518,7 +532,6 @@ const RegisterPatient = (props) => {
     return Object.values(temp).every((x) => x === "");
   };
 
-  // Handler: Save relationship
   const handleSaveRelationship = () => {
     if (!validateRelatives()) return;
 
@@ -551,18 +564,15 @@ const RegisterPatient = (props) => {
     });
   };
 
-  // Handler: Delete relative
   const handleDeleteRelative = (index) => {
     setAllContacts((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Handler: Relative input change
   const handleInputChangeRelatives = (e) => {
     const { name, value } = e.target;
     setRelatives((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Validate form
   const validate = () => {
     const temp = {};
 
@@ -579,15 +589,28 @@ const RegisterPatient = (props) => {
       district: "Province/LGA is required",
       employmentStatusId: "Employment Status is required",
       hospitalNumber: "Hospital Number is required",
+      phoneNumber: "Phone Number is required",
     };
 
     Object.entries(requiredFields).forEach(([field, message]) => {
-      if (!basicInfo[field]) {
+      const val = basicInfo[field];
+      if (!val || (typeof val === "string" && val.trim() === "")) {
         temp[field] = message;
       }
     });
 
-    // Validate date of registration against DOB
+    if (!/^\d{11}$/.test(basicInfo.phoneNumber || "")) {
+      temp.phoneNumber = "Phone number must be exactly 11 digits";
+    }
+
+    const trimmedHN = (basicInfo.hospitalNumber || "").trim();
+    if (!trimmedHN || !/\d/.test(trimmedHN)) {
+      temp.hospitalNumber =
+        "Hospital Number must contain numbers (e.g. /09 instead of /)";
+    } else if (!hospitalNumStatus) {
+      temp.hospitalNumber = "Hospital Number already exists or is invalid";
+    }
+
     if (basicInfo.dateOfRegistration && basicInfo.dob) {
       if (
         !validateDateOfRegistration(basicInfo.dateOfRegistration, basicInfo.dob)
@@ -597,20 +620,13 @@ const RegisterPatient = (props) => {
       }
     }
 
-    // Validate hospital number uniqueness
-    if (!hospitalNumStatus && basicInfo.hospitalNumber) {
-      temp.hospitalNumber = "Hospital Number already exists";
-    }
-
     setErrors(temp);
-    return Object.values(temp).every((x) => x === "");
+    return Object.keys(temp).length === 0;
   };
 
-  // Handler: Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Final validation for date of registration
     if (
       !validateDateOfRegistration(basicInfo.dateOfRegistration, basicInfo.dob)
     ) {
@@ -656,7 +672,7 @@ const RegisterPatient = (props) => {
           {
             assignerId: 1,
             type: "HospitalNumber",
-            value: basicInfo.hospitalNumber,
+            value: basicInfo.hospitalNumber.trim(),
           },
         ],
         otherName: basicInfo.middleName,
@@ -669,7 +685,6 @@ const RegisterPatient = (props) => {
         ninNumber: basicInfo.ninNumber,
       };
 
-      // Add contact points
       if (basicInfo.email) {
         patientForm.contactPoint.push({
           type: "email",
@@ -713,12 +728,10 @@ const RegisterPatient = (props) => {
     }
   };
 
-  // Handler: Cancel
   const handleCancel = () => {
     history.push("/");
   };
 
-  // Get relationship display name
   const getRelationshipDisplay = (relationshipId) => {
     const relationship = getOptions("RELATIONSHIP").find(
       (obj) => obj.id == relationshipId,
@@ -726,14 +739,12 @@ const RegisterPatient = (props) => {
     return relationship ? relationship.display : "";
   };
 
-  // Load initial data
   useEffect(() => {
     loadCountries();
     loadStates();
     getPatient();
   }, [loadCountries, loadStates, getPatient]);
 
-  // Validate date of registration whenever DOB changes
   useEffect(() => {
     if (basicInfo.dateOfRegistration && basicInfo.dob) {
       if (
@@ -750,8 +761,19 @@ const RegisterPatient = (props) => {
     }
   }, [basicInfo.dob, basicInfo.dateOfRegistration]);
 
-  // Get today's date for max date attribute
   const todayDate = moment().format("YYYY-MM-DD");
+
+  // Real-time dynamic boolean flags to keep button accurately disabled
+  const isHospitalNumberValid =
+    Boolean(basicInfo.hospitalNumber) &&
+    /\d/.test(basicInfo.hospitalNumber) &&
+    basicInfo.hospitalNumber.trim().length > 0;
+
+  const isPhoneNumberValid = /^\d{11}$/.test(basicInfo.phoneNumber || "");
+
+  const isSaveDisabled = saving || !hospitalNumStatus || !isHospitalNumberValid;
+  // ||
+  // !isPhoneNumberValid;
 
   return (
     <>
@@ -792,7 +814,7 @@ const RegisterPatient = (props) => {
       <Card className={classes.root}>
         <CardContent>
           <div className="col-xl-12 col-lg-12">
-            <Form>
+            <Form onSubmit={handleSubmit}>
               {/* Basic Information Section */}
               <div className="card">
                 <div
@@ -879,8 +901,8 @@ const RegisterPatient = (props) => {
                             className="form-control"
                             type="text"
                             name="ninNumber"
-                            value={basicInfo.ninNumber}
                             id="ninNumber"
+                            value={basicInfo.ninNumber}
                             onChange={handleInputChangeBasic}
                             style={{
                               border: "1px solid #014D88",
@@ -1209,13 +1231,13 @@ const RegisterPatient = (props) => {
                           type="text"
                           name="phoneNumber"
                           id="phoneNumber"
+                          maxLength={11}
                           onChange={(e) => handlePhoneChange(e, "phoneNumber")}
                           value={basicInfo.phoneNumber}
                           style={{
                             border: "1px solid #014D88",
                             borderRadius: "0.2rem",
                           }}
-                          required
                         />
                         {errors.phoneNumber && (
                           <span className={classes.error}>
@@ -1233,6 +1255,7 @@ const RegisterPatient = (props) => {
                           type="text"
                           name="altPhonenumber"
                           id="altPhonenumber"
+                          maxLength={11}
                           onChange={(e) =>
                             handlePhoneChange(e, "altPhonenumber")
                           }
@@ -1241,7 +1264,6 @@ const RegisterPatient = (props) => {
                             border: "1px solid #014D88",
                             borderRadius: "0.2rem",
                           }}
-                          required
                         />
                       </FormGroup>
                     </div>
@@ -1705,9 +1727,11 @@ const RegisterPatient = (props) => {
                 color="primary"
                 className={classes.button}
                 startIcon={<SaveIcon />}
-                onClick={handleSubmit}
-                disabled={saving || !hospitalNumStatus}
-                style={{ backgroundColor: "#014d88", fontWeight: "bolder" }}
+                disabled={isSaveDisabled}
+                style={{
+                  backgroundColor: isSaveDisabled ? "#ccc" : "#014d88",
+                  fontWeight: "bolder",
+                }}
                 id="save-patient"
               >
                 <span style={{ textTransform: "capitalize" }}>
