@@ -109,7 +109,13 @@ const schema = yup.object().shape({
   dob: yup.date().required(),
   dateOfBirth: yup.string().required(),
   age: yup.number(),
-  ninNumber: yup.string().nullable(),
+  ninNumber: yup
+    .string()
+    .nullable()
+    .matches(/^\d{11}$/, {
+      excludeEmptyString: true,
+      message: "NIN must be 11 digits",
+    }),
   pnumber: yup.string().required(),
   altPhonenumber: yup.string().nullable(),
   email: yup.string().nullable(),
@@ -972,7 +978,7 @@ const ViewPatient = (props) => {
                             <p>NIN has been registered before</p>
                           )}
                           {!checkNINError && errors.ninNumber && (
-                            <p>Enter a valid NIN Number</p>
+                            <p>{errors.ninNumber.message}</p>
                           )}
                         </FormGroup>
                       </div>

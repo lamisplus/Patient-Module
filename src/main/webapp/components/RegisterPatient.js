@@ -604,6 +604,11 @@ const RegisterPatient = (props) => {
       temp.phoneNumber = "Phone number must be exactly 11 digits";
     }
 
+    const trimmedNin = (basicInfo.ninNumber || "").trim();
+    if (trimmedNin && !/^\d{11}$/.test(trimmedNin)) {
+      temp.ninNumber = "NIN must be 11 digits";
+    }
+
     const trimmedHN = (basicInfo.hospitalNumber || "").trim();
     if (!trimmedHN || !/\d/.test(trimmedHN)) {
       temp.hospitalNumber =
@@ -910,6 +915,11 @@ const RegisterPatient = (props) => {
                               borderRadius: "0.2rem",
                             }}
                           />
+                          {errors.ninNumber && (
+                            <span className={classes.error}>
+                              {errors.ninNumber}
+                            </span>
+                          )}
                         </FormGroup>
                       </div>
                     </div>
