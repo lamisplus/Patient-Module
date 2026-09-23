@@ -279,6 +279,7 @@ const RegisterPatient = (props) => {
       const basicInfoData = {
         ...initialBasicInfo,
         hospitalNumber: rawHospitalNum,
+        ninNumber: patient.ninNumber || "",
         firstName: patient.firstName || "",
         lastName: patient.surname || "",
         otherName: patient.otherName || "",
