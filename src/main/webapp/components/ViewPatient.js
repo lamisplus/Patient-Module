@@ -281,7 +281,7 @@ const ViewPatient = (props) => {
       setPatientFacilityId(patient.facilityId);
       setValue("dateOfRegistration", patient.dateOfRegistration);
       setValue("facilityId", patient.facilityId);
-      setValue("ninNumber", patient.ninNumber);
+      setValue("ninNumber", patient.ninNumber || "");
       setValue("firstName", patient.firstName);
       setValue("middleName", patient.otherName);
       setValue("lastName", patient.surname);
@@ -343,6 +343,12 @@ const ViewPatient = (props) => {
         console.error(error);
       });
   };
+  const handleNinNumberChange = (e) => {
+    const sanitisedNin = e.target.value.replace(/\D/g, "").slice(0, 11);
+    e.target.value = sanitisedNin;
+    setValue("ninNumber", sanitisedNin);
+  };
+
   const checkNIN = async (e) => {
     setCheckNINError(false);
     if (e.target.value.length > 0) {
@@ -955,17 +961,12 @@ const ViewPatient = (props) => {
                           </Label>
                           <input
                             className="form-control"
-                            name="ninNumber"
                             type="text"
                             id="ninNumber"
-                            value={
-                              Object.keys(patientData).length !== 0 &&
-                              patientData.ninNumber
-                                ? patientData.ninNumber
-                                : ""
-                            }
+                            maxLength={11}
+                            {...register("ninNumber")}
+                            onChange={handleNinNumberChange}
                             style={{ border: "1px solid #014d88" }}
-                            readOnly
                           />
                           {checkNINError && (
                             <p>NIN has been registered before</p>
