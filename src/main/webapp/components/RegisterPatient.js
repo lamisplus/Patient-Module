@@ -26,6 +26,7 @@ import "react-phone-input-2/lib/style.css";
 import "./patient.css";
 import { Modal } from "react-bootstrap";
 import useCodesets from "./hook/useCodesets";
+import { getApiErrorMessage, getApiFieldErrors } from "./apiErrors";
 
 library.add(faCheckSquare, faCoffee, faEdit, faTrash);
 
@@ -725,10 +726,11 @@ const RegisterPatient = (props) => {
       history.push("/");
     } catch (error) {
       console.error("Error saving patient:", error);
-      const errorMessage =
-        error.response?.data?.apierror?.message ||
-        "Something went wrong. Please try again.";
-      toast.error(errorMessage);
+      const fieldErrors = getApiFieldErrors(error);
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }));
+      }
+      toast.error(getApiErrorMessage(error));
     } finally {
       setSaving(false);
     }

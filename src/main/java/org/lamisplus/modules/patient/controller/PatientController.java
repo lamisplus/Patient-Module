@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 //import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -38,7 +40,7 @@ public class PatientController {
     private final PatientCheckPostServiceRepository patientCheckPostServiceRepository;
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<PersonResponseDto> createPatient(@RequestBody PersonDto patient) {
+    public ResponseEntity<PersonResponseDto> createPatient(@Valid @RequestBody PersonDto patient) {
         return ResponseEntity.ok(personService.createPerson(patient));
     }
 
@@ -58,7 +60,7 @@ public class PatientController {
     }
 
     @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<PersonResponseDto> updatePatient(@PathVariable("id") Long id, @RequestBody PersonDto patient) {
+    public ResponseEntity<PersonResponseDto> updatePatient(@PathVariable("id") Long id, @Valid @RequestBody PersonDto patient) {
         return ResponseEntity.ok(personService.updatePerson(id, patient));
     }
 

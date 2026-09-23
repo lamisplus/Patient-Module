@@ -28,6 +28,7 @@ import { Link, useHistory, useLocation } from "react-router-dom";
 import { TiArrowBack } from "react-icons/ti";
 import { useForm } from "react-hook-form";
 import { token, url as baseUrl } from "../../../api";
+import { getApiErrorMessage, getApiFieldErrors } from "./apiErrors";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import _ from "lodash";
@@ -546,9 +547,14 @@ const ViewPatient = (props) => {
         history.push("/");
       } catch (e) {
         console.error(e);
-        toast.error("An error occured while registering a patient !", {
-          position: toast.POSITION.TOP_RIGHT,
+        const fieldErrors = getApiFieldErrors(e);
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          setError(field, { type: "server", message });
         });
+        toast.error(
+          getApiErrorMessage(e, "An error occured while registering a patient !"),
+          { position: toast.POSITION.TOP_RIGHT }
+        );
       }
     }
   };

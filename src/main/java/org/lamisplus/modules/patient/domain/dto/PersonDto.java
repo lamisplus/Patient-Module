@@ -9,6 +9,7 @@ import org.lamisplus.modules.patient.utility.LocalDateConverter;
 import javax.annotation.Nullable;
 import javax.persistence.Convert;
 import javax.validation.constraints.Null;
+import javax.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ public class PersonDto implements Serializable {
     private final LocalDateTime deceasedDateTime;
     private final Long maritalStatusId;
     @Nullable
+    @Pattern(regexp = "^$|^\\d{11}$", message = "NIN must be 11 digits")
     private final String ninNumber;
     @Nullable
     private final String emrId;
