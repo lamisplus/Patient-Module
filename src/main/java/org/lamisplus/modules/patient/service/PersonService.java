@@ -68,7 +68,6 @@ public class PersonService {
 
     private final MenuService menuService;
 
-    @Transactional
     public PersonResponseDto createPerson(PersonDto personDto) {
         Person person = getPersonFromDto(personDto);
         applyCurrentUserFacility(person);
@@ -104,7 +103,6 @@ public class PersonService {
     }
 
 
-    @Transactional
     public PersonResponseDto updatePerson(Long id, PersonDto personDto) {
         Person existPerson = personRepository
                 .findById(id).orElseThrow(() -> new EntityNotFoundException(PersonService.class, PERSON_NOT_FOUND_MESSAGE + id));
