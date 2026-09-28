@@ -52,6 +52,8 @@ public class PersonService {
 //    private final SimpMessageSendingOperations messagingTemplate;
 
     static final String PERSON_NOT_FOUND_MESSAGE = "No person is  found with id  ";
+    private static final String DEFAULT_SOURCE = "Web";
+    private static final int MINIMUM_BIOMETRIC_FINGER_COUNT = 6;
     private final PersonRepository personRepository;
     private final ApplicationCodesetRepository applicationCodesetRepository;
 
@@ -66,26 +68,43 @@ public class PersonService {
 
     private final MenuService menuService;
 
+    @Transactional
     public PersonResponseDto createPerson(PersonDto personDto) {
         Person person = getPersonFromDto(personDto);
-        Optional<User> currentUser = userService.getUserWithRoles();
-        if (currentUser.isPresent()) {
-            log.info("currentUser: " + currentUser.get());
-            User user = currentUser.get();
-            Long currentOrganisationUnitId = user.getCurrentOrganisationUnitId();
-            person.setFacilityId(currentOrganisationUnitId);
-        }
-        String hospitalNumber = getHospitalNumber(personDto);
-        person.setHospitalNumber(hospitalNumber);
+        applyCurrentUserFacility(person);
+        person.setHospitalNumber(getHospitalNumber(personDto));
         person.setUuid(UUID.randomUUID().toString());
         person.setFullName(this.getFullName(personDto.getFirstName(), personDto.getOtherName(), personDto.getSurname()));
-        person.setSource((personDto.getSource() != null && !personDto.getSource().trim().isEmpty()) ? personDto.getSource()  : "Web" );
+        person.setSource(resolveSource(personDto.getSource()));
         person.setLatitude(personDto.getLatitude());
         person.setLongitude(personDto.getLongitude());
-        return getDtoFromPerson(personRepository.save(person));
+        return getDtoFromPerson(saveAndVerify(person));
+    }
+
+    private void applyCurrentUserFacility(Person person) {
+        Optional<User> currentUser = userService.getUserWithRoles();
+        if (currentUser.isPresent()) {
+            User user = currentUser.get();
+            log.info("currentUser: {}", user);
+            person.setFacilityId(user.getCurrentOrganisationUnitId());
+        }
+    }
+
+    private String resolveSource(String source) {
+        return (source != null && !source.trim().isEmpty()) ? source : DEFAULT_SOURCE;
+    }
+
+    private Person saveAndVerify(Person person) {
+        Person savedPerson = personRepository.saveAndFlush(person);
+        if (savedPerson == null || savedPerson.getId() == null) {
+            throw new IllegalStateException(
+                    "Patient was not persisted; no database identity was assigned for uuid " + person.getUuid());
+        }
+        return savedPerson;
     }
 
 
+    @Transactional
     public PersonResponseDto updatePerson(Long id, PersonDto personDto) {
         Person existPerson = personRepository
                 .findById(id).orElseThrow(() -> new EntityNotFoundException(PersonService.class, PERSON_NOT_FOUND_MESSAGE + id));
@@ -96,7 +115,7 @@ public class PersonService {
         person.setCreatedDate(existPerson.getCreatedDate());
         person.setArchived(existPerson.getArchived());
         person.setFacilityId(existPerson.getFacilityId());
-        return getDtoFromPerson(personRepository.save(person));
+        return getDtoFromPerson(saveAndVerify(person));
     }
 
 
@@ -179,10 +198,10 @@ public class PersonService {
 
     private String getHospitalNumber(PersonDto personDto) {
         List<IdentifierDto> identifier = personDto.getIdentifier();
-        if (!identifier.isEmpty()) {
+        if (identifier != null && !identifier.isEmpty()) {
             IdentifierDto identifierDto = identifier.get(0);
             String type = identifierDto.getType();
-            if (type.equals("HospitalNumber")) {
+            if ("HospitalNumber".equals(type)) {
                 String hospitalNumber = identifierDto.getValue();
                 log.info("hospitalNumber {} ", hospitalNumber);
                 return hospitalNumber;
@@ -335,9 +354,7 @@ public class PersonService {
             return false;
         }
         Integer fingerCount = personRepository.getBiometricCountByPersonUuid(uuid);
-        Boolean status = Boolean.FALSE;
-        if (fingerCount >= 6) status = Boolean.TRUE;
-        return status;
+        return fingerCount != null && fingerCount >= MINIMUM_BIOMETRIC_FINGER_COUNT;
     }
     public PersonResponseDto getDtoFromPersonWithoutBiometric(Person person, Boolean status) {
 
