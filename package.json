@@ -122,9 +122,9 @@
     "yup": "^0.32.8"
   },
   "scripts": {
-    "start": "react-scripts --openssl-legacy-provider start",
+    "start": "react-scripts start",
     "jsreport": "jsreport-start",
-    "build": "react-scripts --openssl-legacy-provider build && xcopy /s /y build src\\main\\resources\\views\\static\\patient",
+    "build": "react-scripts build && cp -r build/* src/main/resources/views/static/patient",
     "serve": "serve -s build",
     "run-build": "react-scripts build && serve",
     "test": "react-scripts test --env=jsdom",
