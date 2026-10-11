@@ -22,6 +22,7 @@ import moment from "moment";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import RecallPatient from "../../RecallPatient";
 import useRoles from "../../../hooks/useRoles";
+import { usePermissions } from "../../../hooks/usePermissions";
 
 
 const useStyles = makeStyles((theme) => ({
@@ -104,16 +105,15 @@ const useStyles = makeStyles((theme) => ({
 }));
 let newDate = new Date();
 function Index(props) {
-    const { hasRole, loading: rolesLoading } = useRoles();
-    const isRDE = hasRole("RDE");
-    const permissions = useMemo(
-    () => ({
-      canSeeCheckedInPatients: !isRDE, // POC users see this
-      // canSeeFindPatients: isRDE, // RDE users see this
-      // canSeeArtPatients: isRDE, // RDE users see this
-      // canSeeOvcLinkage: isRDE, // RDE users see this
-    }),
-    [isRDE]
+  const { hasRole, loading: rolesLoading } = useRoles();
+  const { hasAnyPermission, loading: permissionsLoading } = usePermissions();
+  const canCheckIn = hasAnyPermission("patient_check_in", "all_permission");
+  const isRDE = hasRole("RDE");
+  const permissions = useMemo(
+      () => ({
+        canSeeCheckedInPatients: !isRDE, // POC users see this
+      }),
+      [isRDE]
   );
   const [patientDetails, setPatientDetails] = useState(null);
   const [pimsEnrollment, setPimsEnrollment] = useState([]);
@@ -126,24 +126,19 @@ function Index(props) {
   };
 
   const userDetail =
-    props.location && props.location.state ? props.location.state.user : null;
+      props.location && props.location.state ? props.location.state.user : null;
   const [loading, setLoading] = useState("");
   let history = useHistory();
   const classes = useStyles();
   const [checkInDate, setCheckInDate] = useState(new Date());
   const [checkOutDate, setCheckOutDate] = useState(new Date());
   const [today, setToday] = useState(
-    new Date().toISOString().substr(0, 10).replace("T", " ")
+      new Date().toISOString().substr(0, 10).replace("T", " ")
   );
   const patientObj =
-    history.location && history.location.state
-      ? history.location.state.patientObj
-      : {};
-
-  const permissionsSet = useMemo(() => {
-    const permArray = history.location?.state?.permissions || [];
-    return new Set(permArray);
-  }, [history.location?.state?.permissions]);
+      history.location && history.location.state
+          ? history.location.state.patientObj
+          : {};
 
   const { handleSubmit, control } = useForm();
   const [modal, setModal] = useState(false);
@@ -154,10 +149,10 @@ function Index(props) {
   const [selectedServices, setSelectedServices] = useState({ selected: [] });
   const [patientVisits, setPatientVisits] = useState([]);
   const [patientBiometricStatus, setPatientBiometricStatus] = useState(
-    patientObj.biometricStatus
+      patientObj.biometricStatus
   );
   const [biometricsModuleInstalled, setBiometricsModuleInstalled] =
-    useState(false);
+      useState(false);
 
   const [checkOutObj, setCheckOutObj] = useState({
     personId: "",
@@ -180,21 +175,19 @@ function Index(props) {
       setAllServices(response.data);
 
       const mappedServices = Object.entries(response.data).map(
-        ([key, value]) => ({
-          label: value.moduleServiceName,
-          value: value.moduleServiceCode,
-        })
+          ([key, value]) => ({
+            label: value.moduleServiceName,
+            value: value.moduleServiceCode,
+          })
       );
 
       // Filter out Consultation from the services list
       const filteredServices = mappedServices.filter(
-        (service) => service.label !== "Consultation"
+          (service) => service.label !== "Consultation"
       );
 
       setServices(filteredServices);
 
-      // const triageService = mappedServices.find(service => service.label === "Triage");
-      // console.log("Triage service:", triageService);
     } catch (e) {
       await Swal.fire({
         icon: "error",
@@ -207,11 +200,11 @@ function Index(props) {
   const loadPatientVisits = useCallback(async () => {
     try {
       const response = await axios.get(
-        `${baseUrl}patient/visit/visit-by-patient/${patientObj.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+          `${baseUrl}patient/visit/visit-by-patient/${patientObj.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
       );
       setPatientVisits(response.data);
-      console.log("Patient visits:", response.data);
+      // console.log("Patient visits:", response.data);
 
       // Check for ANY pending encounters across all visits
       const hasPendingEncounter = response.data.some((visit) => {
@@ -222,12 +215,12 @@ function Index(props) {
 
         // Check if any encounters within the visit are pending
         return (
-          visit.encounters &&
-          visit.encounters.some((encounter) => encounter.status === "PENDING")
+            visit.encounters &&
+            visit.encounters.some((encounter) => encounter.status === "PENDING")
         );
       });
 
-      console.log("Has pending encounter:", hasPendingEncounter);
+      // console.log("Has pending encounter:", hasPendingEncounter);
       setCheckinStatus(hasPendingEncounter);
     } catch (e) {
       await Swal.fire({
@@ -240,22 +233,20 @@ function Index(props) {
   let visitTypesRows = null;
   if (services && services.length > 0) {
     visitTypesRows = services.map((service, index) => (
-      <MenuItem
-        key={service.moduleServiceCode}
-        value={service.moduleServiceCode}
-      >
-        {service.moduleServiceName}
-      </MenuItem>
+        <MenuItem
+            key={service.moduleServiceCode}
+            value={service.moduleServiceCode}
+        >
+          {service.moduleServiceName}
+        </MenuItem>
     ));
   }
 
   const onChangeDate = (date) => {
-    console.log(date.target.value);
     const newDate = moment(new Date(date.target.value)).format(
-      "yyyy-MM-dd hh:mm"
+        "yyyy-MM-dd hh:mm"
     );
     setCheckInDate(newDate);
-    console.log(newDate);
   };
   const handleCheckIn = () => {
     setModal(true);
@@ -275,35 +266,35 @@ function Index(props) {
     try {
       const today = new Date();
       const visitDetails = await axios.get(
-        `${baseUrl}patient/visit/visit-detail/${patientObj.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+          `${baseUrl}patient/visit/visit-detail/${patientObj.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
       );
       const visitDetail = visitDetails.data;
       const pendingVisit = visitDetail.find((obj) => obj.status == "PENDING");
       let visit = null;
       if (!pendingVisit) {
         const visitResponse = await axios.post(
-          `${baseUrl}patient/visit`,
-          {
-            personId: patientObj.id,
-            visitStartDate: today,
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
+            `${baseUrl}patient/visit`,
+            {
+              personId: patientObj.id,
+              visitStartDate: today,
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
         );
         visit = visitResponse.data;
       } else {
         visit = pendingVisit;
       }
       await axios.post(
-        `${baseUrl}patient/encounter`,
-        {
-          encounterDate: today,
-          personId: patientObj.id,
-          serviceCode: data.VisitType,
-          status: "PENDING",
-          visitId: visit.id,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+          `${baseUrl}patient/encounter`,
+          {
+            encounterDate: today,
+            personId: patientObj.id,
+            serviceCode: data.VisitType,
+            status: "PENDING",
+            visitId: visit.id,
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
       );
       setModal(false);
       await Swal.fire({
@@ -329,69 +320,70 @@ function Index(props) {
   let checkInServicesID = [];
   /**** Submit Button For CheckIN  */
   const handleSubmitCheckIn = (e) => {
-    e.preventDefault();
-    //Check if selected service object is empty before creating visit and posting.
-    let m = moment(checkInDate, "yyyy-MM-DD hh:mm").format("yyyy-MM-DD H:mm");
-    if (selectedServices.selected.length > 0 && moment(m).isValid()) {
-      selectedServices.selected.length > 0 &&
-        selectedServices.selected.map((service) => {
-          checkInServicesID.push(
-            _.find(allServices, { moduleServiceCode: service }).id
-          );
-        });
+        e.preventDefault();
+        let m = moment(checkInDate).format("YYYY-MM-DD HH:mm");
 
-      checkInObj.serviceIds = checkInServicesID;
-      //Ensure date time is in 24hr format
-      checkInObj.visitDto.checkInDate = moment(
-        checkInDate,
-        "yyyy-MM-DD hh:mm"
-      ).format("yyyy-MM-DD HH:mm");
-      axios
-        .post(`${baseUrl}patient/visit/checkin`, checkInObj, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then((response) => {
-          console.log("checkIn", response);
-          toast.success("Patient Check-In successful");
-          setCheckinStatus(true);
-          onCancelCheckIn();
-          loadPatientVisits();
-        })
-        .catch((error) => {
-          toast.error(
-            "An error occurred. Please ensure the patient is eligible for the selected services and try again.",
-            error
-          );
-          onCancelCheckIn();
-        });
-    } else {
-      toast.error(
-        "Kindly check the form for a valid date and selected services"
-      );
-    }
-  };
+        if (selectedServices.selected.length > 0 && moment(m).isValid()) {
+          // Build a fresh payload instead of mutating state
+          const serviceIds = selectedServices.selected
+              .map((code) => _.find(allServices, { moduleServiceCode: code })?.id)
+              .filter(Boolean);
+
+          const payload = {
+            serviceIds,
+            visitDto: {
+              personId: patientObj.id,
+              checkInDate: m,
+            },
+          };
+
+          // console.log("selected codes:", selectedServices.selected);
+          // console.log("checkIn payload:", JSON.stringify(payload, null, 2));
+
+          axios
+              .post(`${baseUrl}patient/visit/checkin`, payload, {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              .then((response) => {
+                toast.success("Patient Check-In successful");
+                setCheckinStatus(true);
+                onCancelCheckIn();
+                loadPatientVisits();
+              })
+              .catch((error) => {
+                console.error("Check-in failed:", error.response?.status, error.response?.data);
+                toast.error(
+                    error.response?.data?.message ||
+                    "An error occurred. Please ensure the patient is eligible for the selected services and try again."
+                );
+                onCancelCheckIn();
+              });
+        } else {
+          toast.error("Kindly check the form for a valid date and selected services");
+        }
+      };
 
   const handleSubmitCheckOut = (e) => {
     e.preventDefault();
     const getVisitID = patientVisits.find(
-      (visits) => visits.status === "PENDING"
+        (visits) => visits.status === "PENDING"
     );
 
     axios
-      .put(`${baseUrl}patient/visit/checkout/${getVisitID.id}`, getVisitID.id, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((response) => {
-        toast.success("Record save successful");
-        setCheckinStatus(false);
-        onCancelCheckOut();
-        loadPatientVisits();
-      })
-      .catch((error) => {
-        console.log(error);
-        toast.error("Something went wrong");
-        onCancelCheckOut();
-      });
+        .put(`${baseUrl}patient/visit/checkout/${getVisitID.id}`, getVisitID.id, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((response) => {
+          toast.success("Record save successful");
+          setCheckinStatus(false);
+          onCancelCheckOut();
+          loadPatientVisits();
+        })
+        .catch((error) => {
+          console.log(error);
+          toast.error("Something went wrong");
+          onCancelCheckOut();
+        });
   };
   const onServiceSelect = (selectedValues) => {
     setSelectedServices({ selected: selectedValues });
@@ -401,304 +393,284 @@ function Index(props) {
     loadPatientVisits();
   }, [loadServices, loadPatientVisits]);
   return (
-    <>
-      <div className="row">
-        <div className="mb-3 col-md-3">&nbsp;</div>
-        <div className="mb-3 col-md-3">&nbsp;</div>
-        <div className="mb-3 col-md-3">&nbsp;</div>
-        <div className="mb-3 col-md-3">
-          <Link to={"/"}>
-            <MatButton
-              className=" float-right mr-1"
-              variant="contained"
-              floated="left"
-              startIcon={<TiArrowBack />}
-              style={{
-                backgroundColor: "rgb(153, 46, 98)",
-                color: "#fff",
-                height: "35px",
-              }}
-            >
-              <span style={{ textTransform: "capitalize" }}>Back</span>
-            </MatButton>
-          </Link>
-
-
-          {(permissionsSet.has("patient_check_in") ||
-            permissionsSet.has("all_permission")) ? (
-              <Button
-                variant="contained"
-                style={{
-                  backgroundColor: checkinStatus ? "#ccc" : "rgb(4, 196, 217)",
-                  fontSize: "14PX",
-                  fontWeight: "bold",
-                  height: "35px",
-                }}
-                onClick={handleCheckIn}
-                className="float-right mr-1"
-                disabled={checkinStatus}
+      <>
+        <div className="row">
+          <div className="mb-3 col-md-3">&nbsp;</div>
+          <div className="mb-3 col-md-3">&nbsp;</div>
+          <div className="mb-3 col-md-3">&nbsp;</div>
+          <div className="mb-3 col-md-3">
+            <Link to={"/"}>
+              <MatButton
+                  className=" float-right mr-1"
+                  variant="contained"
+                  floated="left"
+                  startIcon={<TiArrowBack />}
+                  style={{
+                    backgroundColor: "rgb(153, 46, 98)",
+                    color: "#fff",
+                    height: "35px",
+                  }}
               >
+                <span style={{ textTransform: "capitalize" }}>Back</span>
+              </MatButton>
+            </Link>
+
+
+            {!permissionsLoading && canCheckIn && (
+                <Button
+                    variant="contained"
+                    style={{
+                      backgroundColor: checkinStatus ? "#ccc" : "rgb(4, 196, 217)",
+                      fontSize: "14PX",
+                      fontWeight: "bold",
+                      height: "35px",
+                    }}
+                    onClick={handleCheckIn}
+                    className="float-right mr-1"
+                    disabled={checkinStatus}
+                >
                 <span style={{ textTransform: "capitalize" }}>
                   {checkinStatus ? "Already Checked In" : "Check In"}
                 </span>
-              </Button>
-            ) : null
-          }
+                </Button>
+            )
+            }
 
-
-          {/* {checkinStatus === true ? (
-            <Button
-              variant="contained"
-              style={{
-                backgroundColor: "green",
-                fontSize: "14PX",
-                fontWeight: "bold",
-                height: "35px",
-              }}
-              onClick={handleCheckOut}
-              className=" float-right mr-1"
-            >
-              <span style={{ textTransform: "capitalize" }}>Check Out</span>
-            </Button>
-          ) : (
-            ""
-          )} */}
-
-          <Link>
-            <MatButton
-              className=" float-right mr-1"
-              variant="contained"
-              floated="left"
-              startIcon={<FontAwesomeIcon icon="fa-solid fa-fingerprint" />}
-              style={{
-                backgroundColor: "rgb(153, 46, 98)",
-                color: "#fff",
-                height: "35px",
-              }}
-              onClick={toggleRecall}
-            >
-              <span style={{ textTransform: "capitalize" }}>Identify</span>
-            </MatButton>
-          </Link>
+            <Link>
+              <MatButton
+                  className=" float-right mr-1"
+                  variant="contained"
+                  floated="left"
+                  startIcon={<FontAwesomeIcon icon="fa-solid fa-fingerprint" />}
+                  style={{
+                    backgroundColor: "rgb(153, 46, 98)",
+                    color: "#fff",
+                    height: "35px",
+                  }}
+                  onClick={toggleRecall}
+              >
+                <span style={{ textTransform: "capitalize" }}>Identify</span>
+              </MatButton>
+            </Link>
+          </div>
         </div>
-      </div>
-      <Modal
-        size="lg"
-        style={{ maxWidth: "900px" }}
-        isOpen={modal}
-        toggle={onCancelCheckIn}
-        className={classes.checkinModal}
-      >
-        <ModalHeader toggle={onCancelCheckIn}>
-          <h5
-            style={{ fontWeight: "bold", fontSize: "30px", color: "#992E62" }}
-          >
-            Select Check-In Service
-          </h5>
-        </ModalHeader>
-        <ModalBody>
-          <form onSubmit={handleSubmitCheckIn}>
-            <Paper
-              style={{
-                display: "grid",
-                gridRowGap: "20px",
-                padding: "20px",
-                margin: "10px 10px",
-              }}
+        <Modal
+            size="lg"
+            style={{ maxWidth: "900px" }}
+            isOpen={modal}
+            toggle={onCancelCheckIn}
+            className={classes.checkinModal}
+        >
+          <ModalHeader toggle={onCancelCheckIn}>
+            <h5
+                style={{ fontWeight: "bold", fontSize: "30px", color: "#992E62" }}
             >
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <FormGroup
-                    style={{ width: "100%" }}
-                    className={classes.checkInDatePicker}
-                  >
-                    <LocalizationProvider dateAdapter={AdapterDateFns}>
-                      <Label
-                        for="post-services"
-                        style={{
-                          color: "#014d88",
-                          fontWeight: "bolder",
-                          fontSize: "18px",
-                        }}
-                      >
-                        Check-In Date *
-                      </Label>
-                      <DesktopDateTimePicker
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            sx={{
-                              /*label:{ color:'#014d88',fontWeight:'bolder',fontSize:'18px' }*/
-                              input: { fontSize: "14px" },
-                            }}
-                            fullWidth
-                          />
-                        )}
-                        value={checkInDate}
-                        onChange={(newValue) => {
-                          setCheckInDate(newValue);
-                        }}
-                        maxDate={new Date()}
-                        maxTime={new Date()}
+              Select Check-In Service
+            </h5>
+          </ModalHeader>
+          <ModalBody>
+            <form onSubmit={handleSubmitCheckIn}>
+              <Paper
+                  style={{
+                    display: "grid",
+                    gridRowGap: "20px",
+                    padding: "20px",
+                    margin: "10px 10px",
+                  }}
+              >
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <FormGroup
                         style={{ width: "100%" }}
-                      />
-                    </LocalizationProvider>
-                  </FormGroup>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <FormGroup>
-                    <Label
-                      for="post-services"
-                      style={{
-                        color: "#014d88",
-                        fontWeight: "bolder",
-                        fontSize: "18px",
-                      }}
+                        className={classes.checkInDatePicker}
                     >
-                      <h5
-                        style={{
-                          fontWeight: "bold",
-                          fontSize: "30px",
-                          color: "#992E62",
-                        }}
-                      >
-                        Check-In Service *
-                      </h5>
-                    </Label>
-                    <DualListBox
-                      options={services}
-                      onChange={onServiceSelect}
-                      selected={selectedServices.selected}
-                    />
-                  </FormGroup>
-                </Grid>
-              </Grid>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Button type={"submit"} variant="contained" color={"primary"}>
-                    Submit
-                  </Button>
-                </Grid>
-              </Grid>
-            </Paper>
-          </form>
-        </ModalBody>
-      </Modal>
-      {/* Modal for CheckOut Patient */}
-      <Modal
-        isOpen={modalCheckOut}
-        toggle={onCancelCheckOut}
-        className={classes.checkinModal}
-        style={{ maxWidth: "900px", height: "800px" }}
-      >
-        <ModalHeader toggle={onCancelCheckOut}>
-          <h5
-            style={{ fontWeight: "bold", fontSize: "30px", color: "#014d88" }}
-          >
-            Check Out{" "}
-          </h5>
-        </ModalHeader>
-        <ModalBody>
-          <form>
-            <Paper
-              style={{
-                display: "grid",
-                gridRowGap: "20px",
-                padding: "20px",
-                margin: "10px 10px",
-              }}
-            >
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <h5
-                    style={{
-                      color: "#992E62",
-                      fontSize: "20px",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    Are you sure you want to check-out patient?
-                  </h5>
-                </Grid>
-                <Grid item xs={12}>
-                  <FormGroup
-                    style={{ width: "100%" }}
-                    className={classes.checkInDatePicker}
-                  >
-                    <LocalizationProvider dateAdapter={AdapterDateFns}>
-                      <Label
-                        for="post-services"
-                        style={{
-                          color: "#014d88",
-                          fontWeight: "bolder",
-                          fontSize: "16px",
-                        }}
-                      >
-                        Check-Out Date *
-                      </Label>
-                      <DesktopDateTimePicker
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            sx={{
-                              /*label:{ color:'#014d88',fontWeight:'bolder',fontSize:'18px' }*/
-                              input: { fontSize: "14px" },
+                      <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <Label
+                            for="post-services"
+                            style={{
+                              color: "#014d88",
+                              fontWeight: "bolder",
+                              fontSize: "18px",
                             }}
-                            fullWidth
-                          />
-                        )}
-                        value={checkOutDate}
-                        onChange={(newValue) => {
-                          setCheckOutDate(newValue);
-                        }}
-                        maxDate={new Date()}
-                        maxTime={new Date()}
-                        style={{ width: "100%" }}
-                      />
-                    </LocalizationProvider>
-                  </FormGroup>
-                </Grid>
-              </Grid>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Button
-                    type={"submit"}
-                    onClick={handleSubmitCheckOut}
-                    variant="contained"
-                    color={"primary"}
-                  >
-                    Yes
-                  </Button>
-                  <Button
-                    onClick={onCancelCheckOut}
-                    variant="contained"
-                    style={{
-                      backgroundColor: "#992E62",
-                      color: "#fff",
-                      marginLeft: "10px",
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </Grid>
-              </Grid>
-            </Paper>
-          </form>
-        </ModalBody>
-      </Modal>
-      {/* End of Checkout Modal */}
+                        >
+                          Check-In Date *
+                        </Label>
+                        <DesktopDateTimePicker
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    sx={{
+                                      /*label:{ color:'#014d88',fontWeight:'bolder',fontSize:'18px' }*/
+                                      input: { fontSize: "14px" },
+                                    }}
+                                    fullWidth
+                                />
+                            )}
+                            value={checkInDate}
+                            onChange={(newValue) => {
+                              setCheckInDate(newValue);
+                            }}
+                            maxDate={new Date()}
+                            maxTime={new Date()}
+                            style={{ width: "100%" }}
+                        />
+                      </LocalizationProvider>
+                    </FormGroup>
+                  </Grid>
 
-      <RecallPatient
-        modal={modalRecall}
-        toggle={toggleRecall}
-        patientDetails={patientDetails}
-        setPatientDetails={setPatientDetails}
-        pimsEnrollment={pimsEnrollment}
-        setPimsEnrollment={setPimsEnrollment}
-        personUuid={patientObj.uuid}
-      />
-    </>
+                  <Grid item xs={12}>
+                    <FormGroup>
+                      <Label
+                          for="post-services"
+                          style={{
+                            color: "#014d88",
+                            fontWeight: "bolder",
+                            fontSize: "18px",
+                          }}
+                      >
+                        <h5
+                            style={{
+                              fontWeight: "bold",
+                              fontSize: "30px",
+                              color: "#992E62",
+                            }}
+                        >
+                          Check-In Service *
+                        </h5>
+                      </Label>
+                      <DualListBox
+                          options={services}
+                          onChange={onServiceSelect}
+                          selected={selectedServices.selected}
+                      />
+                    </FormGroup>
+                  </Grid>
+                </Grid>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Button type={"submit"} variant="contained" color={"primary"}>
+                      Submit
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Paper>
+            </form>
+          </ModalBody>
+        </Modal>
+        {/* Modal for CheckOut Patient */}
+        <Modal
+            isOpen={modalCheckOut}
+            toggle={onCancelCheckOut}
+            className={classes.checkinModal}
+            style={{ maxWidth: "900px", height: "800px" }}
+        >
+          <ModalHeader toggle={onCancelCheckOut}>
+            <h5
+                style={{ fontWeight: "bold", fontSize: "30px", color: "#014d88" }}
+            >
+              Check Out{" "}
+            </h5>
+          </ModalHeader>
+          <ModalBody>
+            <form>
+              <Paper
+                  style={{
+                    display: "grid",
+                    gridRowGap: "20px",
+                    padding: "20px",
+                    margin: "10px 10px",
+                  }}
+              >
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <h5
+                        style={{
+                          color: "#992E62",
+                          fontSize: "20px",
+                          fontWeight: "bold",
+                        }}
+                    >
+                      Are you sure you want to check-out patient?
+                    </h5>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <FormGroup
+                        style={{ width: "100%" }}
+                        className={classes.checkInDatePicker}
+                    >
+                      <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <Label
+                            for="post-services"
+                            style={{
+                              color: "#014d88",
+                              fontWeight: "bolder",
+                              fontSize: "16px",
+                            }}
+                        >
+                          Check-Out Date *
+                        </Label>
+                        <DesktopDateTimePicker
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    sx={{
+                                      /*label:{ color:'#014d88',fontWeight:'bolder',fontSize:'18px' }*/
+                                      input: { fontSize: "14px" },
+                                    }}
+                                    fullWidth
+                                />
+                            )}
+                            value={checkOutDate}
+                            onChange={(newValue) => {
+                              setCheckOutDate(newValue);
+                            }}
+                            maxDate={new Date()}
+                            maxTime={new Date()}
+                            style={{ width: "100%" }}
+                        />
+                      </LocalizationProvider>
+                    </FormGroup>
+                  </Grid>
+                </Grid>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Button
+                        type={"submit"}
+                        onClick={handleSubmitCheckOut}
+                        variant="contained"
+                        color={"primary"}
+                    >
+                      Yes
+                    </Button>
+                    <Button
+                        onClick={onCancelCheckOut}
+                        variant="contained"
+                        style={{
+                          backgroundColor: "#992E62",
+                          color: "#fff",
+                          marginLeft: "10px",
+                        }}
+                    >
+                      Cancel
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Paper>
+            </form>
+          </ModalBody>
+        </Modal>
+        {/* End of Checkout Modal */}
+
+        <RecallPatient
+            modal={modalRecall}
+            toggle={toggleRecall}
+            patientDetails={patientDetails}
+            setPatientDetails={setPatientDetails}
+            pimsEnrollment={pimsEnrollment}
+            setPimsEnrollment={setPimsEnrollment}
+            personUuid={patientObj.uuid}
+        />
+      </>
   );
 }
 
