@@ -226,8 +226,8 @@ const RegisterPatient = (props) => {
 
   const formatPhoneNumber = (phone) => {
     if (!phone || typeof phone?.value !== "string") return phone;
-    if (phone.value.charAt(0) === "0") {
-      phone.value = phone.value.replace("0", "234");
+    if (phone.value.startsWith("234")) {
+      phone.value = "0" + phone.value.slice(3);
     }
     return phone;
   };
@@ -241,7 +241,7 @@ const RegisterPatient = (props) => {
       });
       const patient = response.data;
 
-      setAllContacts(patient?.contact || []);
+      setAllContacts(patient?.contact?.contact || []);
       setPatientFacilityId(patient.facilityId);
 
       const identifiers = patient.identifier;

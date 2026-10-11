@@ -254,8 +254,7 @@ const ViewPatient = (props) => {
         );
         const patient = response.data;
         setPatientData(patient);
-      const contacts = patient.contact ? patient.contact : [];
-      setContacts(contacts.contact);
+      setContacts(patient?.contact?.contact || []);
       const identifiers = patient.identifier;
       const address = patient.address;
       const contactPoint = patient?.contactPoint;

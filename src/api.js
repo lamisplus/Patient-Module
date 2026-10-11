@@ -1,10 +1,10 @@
 export const url =
   process.env.NODE_ENV === "development"
-    ? "http://localhost:8388/api/v1/"
+    ? "http://localhost:8789/api/v1/"
     : "/api/v1/";
 export const token =
   process.env.NODE_ENV === "development"
-    ? "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlY2V3c0FDRTUiLCJhdXRoIjoiU3VwZXIgQWRtaW4sRGF0YSBDbGVyayxVc2VyLFJERSIsImV4cCI6MTc4ODg5NzQ3MCwibmFtZSI6IkVDRVdTIEFDRTUifQ.FUniG8Yz1PwKATplcvuHcyOYt6zshqdVclrdIE2G4ve6s4UkYD6_Qcx5e_qeFITSk_Wf9UJq8-KSxk9IPsqWfA"
+    ? "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJndWVzdEBsYW1pc3BsdXMub3JnIiwiYXV0aCI6IlN1cGVyIEFkbWluLFVzZXIsUkRFIiwiZXhwIjoxNzkxNzc1MTQ0LCJuYW1lIjoiR3Vlc3QgR3Vlc3QifQ.2jchK3HAB9F-WsuTvXP8dfkUrogZ7GPcPTT2HUxvtrneOkk9TlarlagUI8ZCDl33gGc6TzOdx3MbrRF6CU3wfw"
     : new URLSearchParams(window.location.search).get("jwt");
 
 export const wsUrl =
