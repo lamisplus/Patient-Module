@@ -7,7 +7,10 @@ import {
   CardContent,
   CircularProgress,
   Typography,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import axios from "axios";
 import { token, url as baseUrl } from "../../../../api";
 import { makeStyles } from "@material-ui/core/styles";
@@ -118,6 +121,7 @@ function Index(props) {
     useState(false);
   const [patientVisits, setPatientVisits] = useState([]);
   const [checkinStatus, setCheckinStatus] = useState(false);
+  const [visitSearch, setVisitSearch] = useState("");
 
   // Add the missing biometrics functions
   const checkBiometricStatus = useCallback((id) => {
@@ -189,10 +193,7 @@ function Index(props) {
         color: "rgba(0,0,0,.87)",
         fontFamily: "'poppins', sans-serif",
       },
-      searchFieldStyle: {
-        width: "200%",
-        marginLeft: "250px",
-      },
+      search: false,
       filtering: false,
       exportButton: false,
       searchFieldAlignment: "left",
@@ -306,6 +307,16 @@ function Index(props) {
     [patientVisits, handleCheckOut]
   );
 
+  const filteredTableData = useMemo(() => {
+    const q = visitSearch.trim().toLowerCase();
+    if (!q) return tableData;
+    return tableData.filter((row) =>
+      [row.checkInDate, row.checkOutDate, row.service]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q))
+    );
+  }, [tableData, visitSearch]);
+
   // Combine all initialization API calls
   const initializeData = useCallback(async () => {
     setLoading(true);
@@ -332,10 +343,33 @@ function Index(props) {
         menuItem: "Visits",
         render: () => (
           <Tab.Pane>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginBottom: "10px",
+              }}
+            >
+              <TextField
+                size="small"
+                variant="outlined"
+                placeholder="Search"
+                value={visitSearch}
+                onChange={(event) => setVisitSearch(event.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                style={{ width: "280px" }}
+              />
+            </div>
             <MaterialTable
               title=""
               columns={columns}
-              data={tableData}
+              data={filteredTableData}
               options={tableOptions}
               isLoading={loading}
             />
@@ -372,7 +406,8 @@ function Index(props) {
     ],
     [
       columns,
-      tableData,
+      filteredTableData,
+      visitSearch,
       tableOptions,
       loading,
       hasAnyPermission,
