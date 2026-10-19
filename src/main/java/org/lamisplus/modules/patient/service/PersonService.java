@@ -68,16 +68,16 @@ public class PersonService {
 
     public PersonResponseDto createPerson(PersonDto personDto) {
         Person person = getPersonFromDto(personDto);
+
         Optional<User> currentUser = userService.getUserWithRoles();
         if (currentUser.isPresent()) {
-            log.info("currentUser: " + currentUser.get());
             User user = currentUser.get();
             Long currentOrganisationUnitId = user.getCurrentOrganisationUnitId();
             person.setFacilityId(currentOrganisationUnitId);
         }
         String hospitalNumber = getHospitalNumber(personDto);
         person.setHospitalNumber(hospitalNumber);
-        person.setUuid(UUID.randomUUID().toString());
+//        person.setUuid(UUID.randomUUID().toString());
         person.setFullName(this.getFullName(personDto.getFirstName(), personDto.getOtherName(), personDto.getSurname()));
         person.setSource((personDto.getSource() != null && !personDto.getSource().trim().isEmpty()) ? personDto.getSource()  : "Web" );
         person.setLatitude(personDto.getLatitude());
@@ -206,6 +206,7 @@ public class PersonService {
         ObjectMapper mapper = new ObjectMapper();
         Person person = new Person();
         String hospitalNumber = getHospitalNumber(personDto);
+        person.setUuid(personDto.getUuid());
         person.setHospitalNumber(hospitalNumber);
         person.setFirstName(this.treatNull(personDto.getFirstName()));
         person.setSurname(this.treatNull(personDto.getSurname()));

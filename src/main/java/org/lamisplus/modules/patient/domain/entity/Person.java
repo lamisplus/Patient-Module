@@ -12,6 +12,7 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "patient_person")
@@ -74,7 +75,7 @@ public class Person extends PatientAuditEntity implements Persistable<Long>  , S
     private  String emrId;
 
     @Column(name = "uuid", nullable = false, unique = true, updatable = false)
-    private String uuid;
+    private String uuid = UUID.randomUUID().toString();
     @Column(name = "first_name")
     private String firstName;
     @Column(name = "surname")
