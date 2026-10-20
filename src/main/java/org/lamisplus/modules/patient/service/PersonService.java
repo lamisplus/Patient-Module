@@ -77,11 +77,15 @@ public class PersonService {
         }
         String hospitalNumber = getHospitalNumber(personDto);
         person.setHospitalNumber(hospitalNumber);
-//        person.setUuid(UUID.randomUUID().toString());
         person.setFullName(this.getFullName(personDto.getFirstName(), personDto.getOtherName(), personDto.getSurname()));
         person.setSource((personDto.getSource() != null && !personDto.getSource().trim().isEmpty()) ? personDto.getSource()  : "Web" );
         person.setLatitude(personDto.getLatitude());
         person.setLongitude(personDto.getLongitude());
+
+        if(person.getUuid() == null){
+            person.setUuid(UUID.randomUUID().toString());
+        }
+
         return getDtoFromPerson(personRepository.save(person));
     }
 

@@ -75,7 +75,7 @@ public class Person extends PatientAuditEntity implements Persistable<Long>  , S
     private  String emrId;
 
     @Column(name = "uuid", nullable = false, unique = true, updatable = false)
-    private String uuid = UUID.randomUUID().toString();
+    private String uuid;
     @Column(name = "first_name")
     private String firstName;
     @Column(name = "surname")
